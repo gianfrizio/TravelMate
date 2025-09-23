@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://travelmate.vercel.app/sitemap.xml

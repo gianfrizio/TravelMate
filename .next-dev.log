@@ -1,0 +1,20 @@
+ ⚠ Port 3000 is in use by an unknown process, using available port 3001 instead.
+   ▲ Next.js 15.5.3 (Turbopack)
+   - Local:        http://localhost:3001
+   - Network:      http://10.255.255.254:3001
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 896ms
+ ○ Compiling /api/geocode ...
+ ✓ Compiled /api/geocode in 1245ms
+ GET /api/geocode?q=Rome&limit=3 200 in 2624ms
+ GET /api/geocode?q=Rome&limit=3 200 in 1040ms
+ ✓ Compiled /api/weather in 133ms
+[weather] Resolving location via Geoapify: https://api.geoapify.com/v1/geocode/search?text=Rome&limit=1&apiKey=REDACTED
+[weather] Fetching OpenWeather v2.5 URL: https://api.openweathermap.org/data/2.5/weather?lat=41.8933203&lon=12.4829321&appid=REDACTED&units=metric&lang=it
+ GET /api/weather?location=Rome 200 in 1242ms
+ GET /api/geocode?q=Rome&limit=5 200 in 1444ms
+ ✓ Compiled /favicon.ico in 161ms
+ GET /favicon.ico 200 in 414ms
+[?25h

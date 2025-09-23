@@ -1,0 +1,343 @@
+@import "tailwindcss";
+
+/* GRADIENTI DI TESTO NEL TEMA SCURO */
+html.dark .bg-gradient-to-r.bg-clip-text.text-transparent,
+html.dark [class*="bg-gradient"][class*="bg-clip-text"][class*="text-transparent"] {
+  background: linear-gradient(90deg, #bfdbfe, #ddd6fe) !important; /* blue-200 to purple-200 */
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  font-weight: 800 !important;
+}
+
+/* FALLBACK PER BROWSER CHE NON SUPPORTANO TEXT GRADIENTS */
+@supports not (-webkit-background-clip: text) {
+  html.dark .bg-gradient-to-r.bg-clip-text.text-transparent {
+    background: none !important;
+    color: #60a5fa !important; /* blue-400 come fallback */
+    -webkit-text-fill-color: initial !important;
+  }
+  
+  html:not(.dark) .bg-gradient-to-r.bg-clip-text.text-transparent {
+    background: none !important;
+    color: #3b82f6 !important; /* blue-500 come fallback */
+    -webkit-text-fill-color: initial !important;
+  }
+}
+
+/* TESTI SECONDARI SCURI MA LEGGIBILI */
+html:not(.dark) .text-gray-500,
+html:not(.dark) .text-gray-400,
+html:not(.dark) .text-slate-500,
+html:not(.dark) .text-slate-400 {
+  color: #374151 !important; /* gray-700 */
+}
+
+/* OVERRIDE ASSOLUTO PER CLASSI TAILWIND */
+html:not(.dark) .bg-gray-50 { background-color: #ffffff !important; }
+html:not(.dark) .bg-gray-100 { background-color: #ffffff !important; }
+html:not(.dark) .bg-slate-50 { background-color: #ffffff !important; }
+html:not(.dark) .bg-slate-100 { background-color: #ffffff !important; }
+html:not(.dark) .bg-neutral-50 { background-color: #ffffff !important; }
+html:not(.dark) .bg-zinc-50 { background-color: #ffffff !important; }
+
+/* ECCEZIONI PER IMMAGINI E ELEMENTI CON BACKGROUND-IMAGE */
+html:not(.dark) [style*="background-image"],
+html:not(.dark) .bg-cover,
+html:not(.dark) .bg-center {
+  background-color: transparent !important;
+}
+
+/* ASSICURA CHE LE IMMAGINI SIANO SEMPRE VISIBILI */
+html:not(.dark) img {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+html:not(.dark) [class*="h-"] > div[style*="background-image"] {
+  background-color: transparent !important;
+  opacity: 1 !important;
+}
+
+/* Theme variables */
+:root {
+  --background: #ffffff;
+  --foreground: #111827;
+  --card-bg: #ffffff;
+  --border-color: #e5e7eb;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f172a;
+    --foreground: #f1f5f9;
+    --card-bg: #1e293b;
+    --border-color: #334155;
+    color-scheme: dark;
+  }
+}
+
+:root.dark {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card-bg: #1e293b;
+  --border-color: #334155;
+  color-scheme: dark;
+}
+
+/* FORZA IL BIANCO NEL TEMA CHIARO - OVERRIDE TAILWIND */
+html:not(.dark),
+html:not(.dark) *,
+html:not(.dark) body,
+html:not(.dark) #__next,
+html:not(.dark) main,
+html:not(.dark) .min-h-screen,
+html:not(.dark) [class*="bg-gray"],
+html:not(.dark) [class*="bg-slate"] {
+  background-color: #ffffff !important;
+}
+
+/* OVERRIDE SPECIFICO PER TUTTE LE CLASSI TAILWIND */
+html:not(.dark) .bg-gray-50,
+html:not(.dark) .bg-gray-100,
+html:not(.dark) .bg-slate-50,
+html:not(.dark) .bg-slate-100,
+html:not(.dark) .bg-gray-25,
+html:not(.dark) .bg-neutral-50,
+html:not(.dark) .bg-zinc-50 {
+  background-color: #ffffff !important;
+}
+
+/* REGOLA SUPER AGGRESSIVA PER TUTTI I DIV */
+html:not(.dark) div:not([class*="bg-blue"]):not([class*="bg-primary"]):not([class*="bg-secondary"]):not([class*="bg-green"]):not([class*="bg-red"]):not([class*="bg-yellow"]):not([class*="bg-purple"]):not([class*="gradient"]):not([style*="background-image"]) {
+  background-color: transparent !important;
+}
+
+/* ASSICURA CHE GLI OVERLAY NON NASCONDANO LE IMMAGINI */
+html:not(.dark) .absolute.inset-0:not(.bg-black):not([class*="bg-gradient"]):not([class*="from-"]):not([class*="to-"]) {
+  background-color: transparent !important;
+}
+
+/* PRESERVA I GRADIENTI E GLI OVERLAY NECESSARI */
+html:not(.dark) [class*="bg-gradient"],
+html:not(.dark) [class*="from-"],
+html:not(.dark) [class*="to-"],
+html:not(.dark) .bg-black {
+  background: initial !important;
+}
+
+/* FORZA LA VISIBILITÀ DELLE IMMAGINI DI BACKGROUND */
+html:not(.dark) .bg-cover,
+html:not(.dark) .bg-center,
+html:not(.dark) [style*="background-image"] {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+}
+
+/* MIGLIORAMENTI GRAFICI PER TEMA CHIARO */
+
+/* SFONDO GRADIENTE SOTTILE PER PROFONDITÀ */
+html:not(.dark) body {
+  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%) !important;
+}
+
+/* CARD E CONTENITORI NEL TEMA CHIARO */
+html:not(.dark) .bg-white {
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important; /* gray-200 */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+html:not(.dark) .shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+html:not(.dark) .hover\:shadow-2xl:hover {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* BOTTONI E FORM NEL TEMA CHIARO */
+html:not(.dark) .border-gray-300 {
+  border-color: #d1d5db !important; /* gray-300 */
+}
+
+html:not(.dark) .border-gray-200 {
+  border-color: #e5e7eb !important; /* gray-200 */
+}
+
+/* NAVBAR E HEADER NEL TEMA CHIARO */
+html:not(.dark) .bg-white\/98 {
+  background-color: rgba(255, 255, 255, 0.98) !important;
+  border-bottom: 1px solid #f3f4f6 !important; /* gray-100 */
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+/* MIGLIORAMENTI SPECIFICI PER DESTINAZIONI */
+html:not(.dark) .rounded-2xl {
+  border-radius: 1rem !important;
+  background-color: #ffffff !important;
+  border: 1px solid #f3f4f6 !important; /* gray-100 */
+}
+
+/* EFFETTI HOVER MIGLIORATI */
+html:not(.dark) .group:hover .rounded-2xl {
+  border-color: #e5e7eb !important; /* gray-200 */
+  transform: translateY(-2px) !important;
+}
+
+/* INPUT E FORM ELEMENTS */
+html:not(.dark) input,
+html:not(.dark) select {
+  background-color: #ffffff !important;
+  border: 1px solid #d1d5db !important; /* gray-300 */
+  color: #111827 !important;
+}
+
+html:not(.dark) input:focus,
+html:not(.dark) select:focus {
+  border-color: #3b82f6 !important; /* blue-500 */
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* MIGLIORAMENTI SPECIFICI PER CARD DESTINAZIONI E BLOG */
+html:not(.dark) .group {
+  transition: all 0.3s ease !important;
+}
+
+html:not(.dark) .group:hover {
+  transform: translateY(-4px) !important;
+}
+
+/* SEPARATORI E DIVISORI */
+html:not(.dark) .border-t,
+html:not(.dark) .border-b {
+  border-color: #f3f4f6 !important; /* gray-100 */
+}
+
+/* BADGE E TAG */
+html:not(.dark) .bg-blue-100 {
+  background-color: #dbeafe !important; /* blue-100 */
+  color: #1d4ed8 !important; /* blue-700 */
+}
+
+/* CONTENITORI DI IMMAGINI */
+html:not(.dark) .h-64,
+html:not(.dark) .h-48,
+html:not(.dark) .h-96 {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+/* FORZA IL BIANCO NEL TEMA CHIARO */
+html:not(.dark) #__next {
+  background-color: #ffffff !important;
+}
+
+/* FORZA TUTTI I MAIN E SECTION NEL TEMA CHIARO */
+html:not(.dark) main {
+  background-color: transparent !important;
+}
+
+html:not(.dark) section:not([class*="bg-"]) {
+  background-color: transparent !important;
+}
+
+/* FORZA IL NERO NEL TEMA SCURO */
+html.dark {
+  background-color: #0f172a !important;
+}
+
+html.dark body {
+  background-color: #0f172a !important;
+}
+
+/* Base styles */
+*,
+*::before,
+*::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Forza gli stili per tutti i componenti */
+.dark {
+  color-scheme: dark;
+}
+
+.dark * {
+  border-color: theme('colors.gray.700');
+}
+
+.dark body {
+  background-color: theme('colors.gray.900');
+  color: theme('colors.white');
+}
+
+/* Focus states migliorati */
+*:focus-visible {
+  outline: 2px solid rgb(59 130 246 / 0.5);
+  outline-offset: 2px;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: rgb(255 255 255);
+}
+
+.dark ::-webkit-scrollbar-track {
+  background-color: rgb(31 41 55);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgb(209 213 219);
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: rgb(75 85 99);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(156 163 175);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(107 114 128);
+}
+
+/* Custom utilities */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Loading animation */
+.loading {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}

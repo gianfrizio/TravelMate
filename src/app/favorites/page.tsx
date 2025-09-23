@@ -1,0 +1,415 @@
+'use client';
+
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Heart, 
+  Calendar, 
+  MapPin, 
+  Star, 
+  
+  Trash2, 
+  Plus,
+  PlaneTakeoff
+} from 'lucide-react';
+import Link from 'next/link';
+import { Destination, ItineraryItem } from '@/types';
+import { useState, useEffect } from 'react';
+import Button from '@/components/ui/Button';
+import { destinations } from '@/data/destinations';
+import { useApp } from '@/context/AppContext';
+
+export default function FavoritesPage() {
+  const { state, removeFromFavorites, removeFromItinerary } = useApp();
+  const [activeTab, setActiveTab] = useState<'favorites' | 'itinerary'>('favorites');
+
+
+  // Normalize favorites coming from state: they might be stored as ids, names, or older object shapes.
+  const normalizeKey = (raw: unknown) => {
+    if (raw == null) return '';
+    let s = String(raw).trim();
+    if (s.includes(',')) s = s.split(',')[0].trim();
+    return s.toLowerCase();
+  };
+
+  const canonicalFavoriteIds = Array.from(new Set(state.favorites
+    .map((f: any) => f)
+    .map((val: any) => {
+      // if object with id
+      if (val && typeof val === 'object') {
+        if (val.id) return String(val.id);
+        if (val.name) return String(val.name);
+      }
+      return String(val);
+    })
+    .map((s: string) => {
+      const byId = destinations.find(d => d.id === s);
+      if (byId) return byId.id;
+      const key = normalizeKey(s);
+      const byExact = destinations.find(d => d.name.toLowerCase() === key);
+      if (byExact) return byExact.id;
+      const byIncludes = destinations.find(d => d.name.toLowerCase().includes(key) || key.includes(d.name.toLowerCase()));
+      if (byIncludes) return byIncludes.id;
+      return null;
+    })
+    .filter(Boolean) as string[]
+  ));
+
+  // Helper to resolve a single raw favorite value for debugging
+  const resolveRawFavorite = (val: any) => {
+    if (val && typeof val === 'object') {
+      if (val.id) return String(val.id);
+      if (val.name) return String(val.name);
+    }
+    const s = String(val || '').trim();
+    const byId = destinations.find(d => d.id === s);
+    if (byId) return byId.id;
+    const key = normalizeKey(s);
+    const byExact = destinations.find(d => d.name.toLowerCase() === key);
+    if (byExact) return byExact.id;
+    const byIncludes = destinations.find(d => d.name.toLowerCase().includes(key) || key.includes(d.name.toLowerCase()));
+    if (byIncludes) return byIncludes.id;
+    return null;
+  };
+
+  const resolvedMap = state.favorites.map((f: any) => ({ raw: f, resolved: resolveRawFavorite(f) }));
+  const unresolvedEntries = resolvedMap.filter(r => !r.resolved);
+  const resolvedIds = resolvedMap.map(r => r.resolved).filter(Boolean) as string[];
+  const [unresolvedImages, setUnresolvedImages] = useState<Record<string, string | null>>({});
+  const unresolvedImageFor = (raw: any) => {
+    const key = String(raw);
+    return unresolvedImages[key] || null;
+  };
+
+  // Fetch images for unresolved entries (best-effort)
+  useEffect(() => {
+    const toFetch = unresolvedEntries.map(u => String(u.raw)).filter(k => !unresolvedImages[k]);
+    if (toFetch.length === 0) return;
+
+    toFetch.forEach(async (city) => {
+      try {
+        const res = await fetch(`/api/city-images?city=${encodeURIComponent(city)}`);
+        if (!res.ok) throw new Error('no image');
+        const j = await res.json();
+        if (j?.imageUrl) {
+          setUnresolvedImages(prev => ({ ...prev, [city]: j.imageUrl }));
+          return;
+        }
+      } catch (e) {
+        // ignore
+      }
+      setUnresolvedImages(prev => ({ ...prev, [city]: null }));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(unresolvedEntries)]);
+
+  const favoriteDestinationsResolved = destinations.filter(d => canonicalFavoriteIds.includes(d.id));
+
+  const itineraryWithDestinations = state.itinerary
+    .map((item: ItineraryItem) => {
+      const dest = destinations.find(d => d.id === item.destinationId)
+        || destinations.find(d => d.name.toLowerCase() === String(item.destinationId).toLowerCase())
+        || null;
+      return { ...item, destination: dest };
+    })
+    .filter((item): item is ItineraryItem & { destination: Destination } => item.destination !== null);
+
+  const EmptyState = ({ type }: { type: 'favorites' | 'itinerary' }) => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="text-center py-16"
+    >
+      <div className="text-6xl mb-4">
+        {type === 'favorites' ? '💝' : '✈️'}
+      </div>
+      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+        {type === 'favorites' ? 'Nessun preferito' : 'Nessun viaggio pianificato'}
+      </h3>
+      <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-md mx-auto">
+        {type === 'favorites' 
+          ? 'Inizia ad esplorare le destinazioni e aggiungi le tue preferite per trovarle facilmente qui!'
+          : 'Aggiungi destinazioni al tuo itinerario per pianificare i tuoi prossimi viaggi.'}
+      </p>
+      <Link href="/destinations">
+        <Button>
+          <Plus className="w-4 h-4 mr-2" />
+          {type === 'favorites' ? 'Scopri Destinazioni' : 'Pianifica un Viaggio'}
+        </Button>
+      </Link>
+    </motion.div>
+  );
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-gray-900 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mb-8"
+        >
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+            I Miei Viaggi
+          </h1>
+          <p className="text-xl text-gray-600 dark:text-gray-300">
+            Gestisci i tuoi preferiti e pianifica i tuoi prossimi viaggi
+          </p>
+          
+        </motion.div>
+
+        {/* Tabs */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="mb-8"
+        >
+          <div className="border-b border-gray-200 dark:border-gray-700">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('favorites')}
+                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'favorites'
+                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                }`}
+              >
+                <Heart className="w-5 h-5" />
+                <span>Preferiti ({state.favorites.length})</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('itinerary')}
+                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'itinerary'
+                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                }`}
+              >
+                <PlaneTakeoff className="w-5 h-5" />
+                <span>Itinerario ({state.itinerary.length})</span>
+              </button>
+            </nav>
+          </div>
+        </motion.div>
+
+        {/* Content */}
+        <AnimatePresence mode="wait">
+          {activeTab === 'favorites' ? (
+            <motion.div
+              key="favorites"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3 }}
+            >
+              {favoriteDestinationsResolved.length === 0 && unresolvedEntries.length === 0 ? (
+                <EmptyState type="favorites" />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {favoriteDestinationsResolved.map((destination: Destination, index: number) => (
+                    <motion.div
+                      key={destination.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: index * 0.1 }}
+                      className="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300"
+                    >
+                      <div className="relative h-48 overflow-hidden">
+                        <div
+                          className="absolute inset-0 bg-cover bg-center group-hover:scale-110 transition-transform duration-300"
+                          style={{ backgroundImage: `url('${destination.image}')` }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                        
+                        {/* Remove button */}
+                        <button
+                          onClick={() => removeFromFavorites(destination.id)}
+                          className="absolute top-4 right-4 p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors"
+                        >
+                          <Heart className="w-4 h-4 fill-current" />
+                        </button>
+
+                        {/* Rating */}
+                        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 flex items-center space-x-1">
+                          <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                          <span className="text-sm font-medium">{destination.rating}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="p-6">
+                        <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 mb-2">
+                          <MapPin className="w-4 h-4" />
+                          <span className="text-sm">{destination.country}</span>
+                        </div>
+                        
+                        <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">
+                          {destination.name}
+                        </h3>
+                        
+                        <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
+                          {destination.description}
+                        </p>
+                        
+                        <div className="flex items-center justify-between">
+                          <div />
+                          <Link href={`/destinations/${destination.id}`}>
+                            <Button size="sm">
+                              Dettagli
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                  {unresolvedEntries.map((entry, i) => (
+                    <motion.div
+                      key={`unresolved-${i}-${String(entry.raw)}`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: (favoriteDestinationsResolved.length + i) * 0.05 }}
+                      className="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300"
+                    >
+                      <div className="relative h-48 overflow-hidden">
+                        <div
+                          className="absolute inset-0 bg-cover bg-center group-hover:scale-110 transition-transform duration-300 bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-6xl"
+                          style={{ backgroundImage: unresolvedImageFor(entry.raw) ? `url('${unresolvedImageFor(entry.raw)}')` : undefined }}
+                        >
+                          {!unresolvedImageFor(entry.raw) && <div className="text-gray-500 dark:text-gray-400">📸</div>}
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+
+                        {/* Remove button for unresolved */}
+                        <button
+                          onClick={() => removeFromFavorites(entry.raw)}
+                          className="absolute top-4 right-4 p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors"
+                        >
+                          <Heart className="w-4 h-4 fill-current" />
+                        </button>
+                      </div>
+
+                      <div className="p-6">
+                        <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 mb-2">
+                          <MapPin className="w-4 h-4" />
+                          <span className="text-sm">—</span>
+                        </div>
+
+                        <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">
+                          {String(entry.raw)}
+                        </h3>
+
+                        <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
+                          Informazioni non disponibili per questa destinazione.
+                        </p>
+
+                        <div className="flex items-center justify-between">
+                          <div />
+                          <Button size="sm" onClick={() => {
+                            // Try to go to live page and pass the city name as query so user can fetch details
+                            window.location.href = `/destinations/live?name=${encodeURIComponent(String(entry.raw))}`;
+                          }}>
+                            Scopri di più
+                          </Button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="itinerary"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              {itineraryWithDestinations.length === 0 ? (
+                <EmptyState type="itinerary" />
+              ) : (
+                <div className="space-y-6">
+                  {itineraryWithDestinations.map((item, index) => (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: index * 0.1 }}
+                      className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg"
+                    >
+                      <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+                        {/* Destination Image */}
+                        <div className="lg:w-48 h-32 lg:h-24 rounded-xl overflow-hidden flex-shrink-0">
+                          <div
+                            className="w-full h-full bg-cover bg-center"
+                            style={{ backgroundImage: `url('${item.destination.image}')` }}
+                          />
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                            <div>
+                              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+                                {item.destination.name}
+                              </h3>
+                              <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 mb-2">
+                                <MapPin className="w-4 h-4" />
+                                <span className="text-sm">{item.destination.country}</span>
+                              </div>
+                              <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                                <div className="flex items-center space-x-1">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>
+                                    {new Date(item.startDate).toLocaleDateString('it-IT')} - 
+                                    {new Date(item.endDate).toLocaleDateString('it-IT')}
+                                  </span>
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                                  <span>{item.destination.rating}</span>
+                                </div>
+                              </div>
+                              {item.notes && (
+                                <p className="text-gray-600 dark:text-gray-300 mt-2 text-sm">
+                                  {item.notes}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center space-x-3">
+                              <div className="text-right">
+                                <div />
+                              </div>
+                              
+                              <div className="flex flex-col space-y-2">
+                                <Link href={`/destinations/${item.destination.id}`}>
+                                  <Button size="sm" className="w-full">
+                                    Dettagli
+                                  </Button>
+                                </Link>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => removeFromItinerary(item.id)}
+                                  className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
