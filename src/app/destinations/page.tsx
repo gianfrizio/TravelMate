@@ -11,7 +11,7 @@ export default function DestinationsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  // Read initial search query from the URL on the client (avoid useSearchParams which can cause prerender bailout)
+  // Legge il parametro di ricerca dall'URL all'inizio 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const sp = new URLSearchParams(window.location.search);
@@ -25,7 +25,7 @@ export default function DestinationsPage() {
     const seed = `${Date.now().toString(36)}-${Math.floor(Math.random() * 100000).toString(36)}`;
     const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
     params.set('seed', seed);
-    // push new URL without full reload
+    // push il nuovo URL senza ricaricare completamente
     router.push(`/destinations?${params.toString()}`);
   };
 
@@ -47,7 +47,7 @@ export default function DestinationsPage() {
           </p>
         </motion.div>
 
-        {/* Search Controls */}
+        {/* Controlli ricerca */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -82,7 +82,7 @@ export default function DestinationsPage() {
           )}
         </motion.div>
 
-        {/* Live Destinations */}
+        {/* Destinazioni live */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

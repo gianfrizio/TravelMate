@@ -13,7 +13,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  // Base URL used to resolve open graph and twitter image paths
+  // URL base per la risoluzione dei relativi (ad esempio le immagini Open Graph)
   metadataBase: new URL('https://travelmate.vercel.app'),
   title: {
     default: "TravelMate - La tua app di viaggio",
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  // Avoid forcing maximumScale to allow users to zoom (improves accessibility)
+  // Esclude lo zoom per migliorare l'esperienza mobile (accessibilità considerata)
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
     { media: '(prefers-color-scheme: dark)', color: '#0f172a' }
@@ -81,7 +81,7 @@ export default function RootLayout({
   return (
     <html lang="it" className="dark scroll-smooth" suppressHydrationWarning>
       <head>
-        {/* Resource hints to speed up critical fetches (fonts and hero image hosts) */}
+        {/* Risorse per il caricamento anticipato */}
         <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://source.unsplash.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
@@ -90,7 +90,7 @@ export default function RootLayout({
         <link rel="preload" as="image" href="https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1920&h=1080&fit=crop&crop=center" />
       </head>
       <body className={`${inter.variable} font-sans antialiased transition-colors duration-300`}>
-        {/* Skip link for keyboard users */}
+        {/* Skip link per utenti tastiera */}
         <a
           href="#content"
           className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 bg-white dark:bg-slate-900 text-sm px-3 py-2 rounded-md shadow"
@@ -100,7 +100,7 @@ export default function RootLayout({
         <AppProvider>
           <div className="min-h-screen flex flex-col">
             <Navbar />
-            {/* Inline script to set initial color-scheme before hydration (server-side safe) */}
+            {/* Inline script per impostare il tema iniziale */}
             <script
               dangerouslySetInnerHTML={{ __html: `(function(){try{const t=localStorage.getItem('travelmate-theme')||'light';if(t==='dark'){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}document.documentElement.style.colorScheme=t}catch(e){}})()` }}
             />

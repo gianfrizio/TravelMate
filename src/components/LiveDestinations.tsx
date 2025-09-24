@@ -1,3 +1,17 @@
+// Fallback con Picsum Photos (più affidabile)
+// Componente per gestire il caricamento delle immagini con fallback
+  // Usa next/image per il caricamento ottimizzato. Impostiamo il layout tramite il contenitore padre e forniamo suggerimenti su width/height.
+  // RNG con seed (mulberry32)
+  // Se non viene fornito un seed, esegui uno shuffle Fisher-Yates casuale in modo che i risultati varino tra i caricamenti
+  // Shuffle deterministico con seed (mulberry32) quando viene fornito un seed
+  // Semplici cache in memoria per evitare ricerche ripetute durante la sessione
+  // Controllo di concorrenza: dimensione del batch
+          // geocoding
+              // Richiedi geocoding in italiano così il nome/country formattato saranno localizzati
+  // Controllo di concorrenza: dimensione del batch
+  // resetta le destinazioni prima del fetch
+  // Usa il nome della destinazione quando chiami add/remove così AppContext può risolvere all'id canonico del dataset
+                    // Navigazione client-side verso i dettagli live — includi l'URL dell'immagine scelta così il dettaglio mostra la stessa foto
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -95,7 +109,7 @@ const getCityImage = (cityName: string, index: number): string => {
 const CityImage = ({ src, alt, cityName }: { src: string; alt: string; cityName: string }) => {
   const [imageError, setImageError] = useState(false);
 
-  // Use next/image for optimized loading. We set layout via parent container and provide width/height hints.
+  // Usa next/image per il caricamento ottimizzato. Impostiamo il layout tramite il contenitore padre e forniamo suggerimenti su width/height.
   if (imageError) {
     return (
       <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center">
@@ -113,10 +127,10 @@ const CityImage = ({ src, alt, cityName }: { src: string; alt: string; cityName:
       fill
       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
       className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-      onLoadingComplete={() => { /* no-op, keeps previous behavior */ }}
+      onLoadingComplete={() => { /* no-op, mantiene il comportamento precedente */ }}
       onError={() => setImageError(true)}
       priority={false}
-      // Allow external domains in next.config (images config already expected)
+      // Consentire domini esterni in next.config (la configurazione images è già prevista)
     />
   );
 };
@@ -135,7 +149,7 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
   const searchParams = useSearchParams();
   const seedParam = searchParams?.get('seed') || undefined;
 
-  // Seeded RNG (mulberry32)
+  // RNG con seed (mulberry32)
   const mulberry32 = (a: number) => {
     return function () {
       let t = (a += 0x6d2b79f5);
@@ -154,7 +168,7 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
   };
 
   const seededShuffle = (arr: string[], seed?: string) => {
-    // If no seed is provided, perform a true random Fisher-Yates shuffle so results vary between loads
+  // Se non viene fornito un seed, esegui uno shuffle Fisher-Yates casuale in modo che i risultati varino tra i caricamenti
     const a = arr.slice();
     if (!seed) {
       for (let i = a.length - 1; i > 0; i--) {
@@ -164,7 +178,7 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
       return a;
     }
 
-    // Seeded deterministic shuffle (mulberry32) when a seed is provided
+  // Shuffle deterministico con seed (mulberry32) quando viene fornito un seed
     const rng = mulberry32(hashStringToInt(seed));
     for (let i = a.length - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
@@ -174,7 +188,7 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
   };
 
   useEffect(() => {
-    const fetchDestinations = async () => {
+        const fetchDestinations = async () => {
       setLoading(true);
       onLoading?.(true);
       setError(null);
@@ -184,22 +198,22 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
           ? [searchQuery]
           : seededShuffle(POPULAR_CITIES, seedParam).slice(0, maxItems || 12);
 
-        // Simple in-memory caches to avoid repeat lookups during the session
+  // Semplici cache in memoria per evitare ricerche ripetute durante la sessione
         const geocodeCache: Map<string, any> = (globalThis as any).__GM_GEOCODE_CACHE || new Map();
         (globalThis as any).__GM_GEOCODE_CACHE = geocodeCache;
 
         const imageCache: Map<string, string> = (globalThis as any).__GM_IMAGE_CACHE || new Map();
         (globalThis as any).__GM_IMAGE_CACHE = imageCache;
 
-        // Concurrency control: batch size
+  // Controllo di concorrenza: dimensione del batch
         const BATCH_SIZE = 4;
 
         const fetchForCity = async (city: string, index: number) => {
-          // geocode
+          // geocoding
           let geocode = geocodeCache.get(city);
           if (!geocode) {
             try {
-              // Request geocoding in Italian so formatted name/country are localized
+              // Richiedi geocoding in italiano così il nome/country formattato saranno localizzati
               const response = await fetch(`/api/geocode?q=${encodeURIComponent(city)}&limit=1&lang=it`);
               geocode = await response.json();
               geocodeCache.set(city, geocode);
@@ -212,12 +226,12 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
           const suggestion = geocode?.suggestions?.[0];
           if (!suggestion) return null;
 
-          // Suggestion.name is localized (e.g., "Roma, Italia") when lang=it
+          // Suggestion.name è localizzato (es. "Roma, Italia") quando lang=it
           const cityName = (suggestion.name || '').split(',')[0].trim();
-          // Prefer an explicit country field if provided by geocode route
+          // Preferisci un campo `country` esplicito se fornito dalla route di geocoding
           const country = suggestion.country || suggestion.name.split(',').slice(1).join(',').trim() || 'Unknown';
 
-          // image + localized description
+          // immagine + descrizione localizzata
           let imageUrl = imageCache.get(cityName);
           let apiDescription: string | null = null;
           if (!imageUrl) {
@@ -229,20 +243,20 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
                 if (imageData.imageUrl) imageUrl = imageData.imageUrl;
                 else if (imageData.fallbackUrl) imageUrl = imageData.fallbackUrl;
 
-                // Prefer Italian description/title when provided by the API
+                // Preferisci descrizione/titolo in Italiano quando fornito dall'API
                 if (imageData.description) apiDescription = imageData.description;
                 else if (imageData.longExtract) apiDescription = imageData.longExtract;
                 else if (imageData.title && typeof imageData.title === 'string') {
-                  // sometimes the summary is short — use it as a minimal description
+                  // a volte il sommario è breve — usalo come descrizione minima
                   apiDescription = String(imageData.title);
                 }
               }
             } catch (imgError) {
-              logger.warn(`Failed to fetch AI image for ${cityName}:`, imgError);
+              logger.warn(`Impossibile ottenere l'immagine per ${cityName}:`, imgError);
             }
             imageCache.set(cityName, String(imageUrl));
           } else {
-            // If image was cached previously, no apiDescription available — leave null
+            // Se l'immagine era già in cache, non è disponibile una `apiDescription` — lasciare null
           }
 
           return {
@@ -256,7 +270,7 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
             
             budget: Math.random() > 0.6 ? 'high' : Math.random() > 0.3 ? 'medium' : 'low',
             type: Math.random() > 0.7 ? 'beach' : Math.random() > 0.5 ? 'mountain' : 'city',
-            // Prefer localized description (Italian) when available from city-images API
+            // Preferisci la descrizione localizzata (italiano) quando disponibile dall'API city-images
             description: apiDescription || `Scopri ${cityName} con la sua cultura, attrazioni ed esperienze uniche.`
           } as LiveDestination;
         };
@@ -264,16 +278,16 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
         const tasks: Promise<LiveDestination | null>[] = [];
         for (let i = 0; i < citiesToFetch.length; i++) {
           tasks.push(fetchForCity(citiesToFetch[i], i));
-          // If reached batch size or end, await batch
+          // Se raggiungi la dimensione del batch o la fine, attendi il completamento del batch
           if (tasks.length >= BATCH_SIZE || i === citiesToFetch.length - 1) {
-            // run batch in parallel
-                // append non-null results and deduplicate by id
+            // esegui il batch in parallelo
+                // appenda i risultati non nulli e rimuovi i duplicati per id
                 const results = await Promise.all(tasks);
                 const valid = results.filter(Boolean) as LiveDestination[];
                 setDestinations((prev) => {
                   const combined = prev.concat(valid);
                   const seen = new Set<string>();
-                    // Deduplicate by id, normalized name, or proximity (within ~1km)
+                    // Deduplica per id, nome normalizzato o prossimità (entro ~1km)
                     const seenNames = new Set<string>();
                     const kept: LiveDestination[] = [];
                     const isNearby = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -284,7 +298,7 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
                       const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
                       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
                       const d = R * c;
-                      return d <= 1.0; // within 1 km
+                      return d <= 1.0; // entro 1 km
                     };
 
                     const normalize = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -293,7 +307,7 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
                       if (seen.has(d.id)) continue;
                       const n = normalize(d.name || '');
                       if (seenNames.has(n)) continue;
-                      // check proximity to any kept destination
+                      // check prossimità
                       let prox = false;
                       for (const k of kept) {
                         if (d.lat && d.lon && k.lat && k.lon && isNearby(d.lat, d.lon, k.lat, k.lon)) {
@@ -310,12 +324,12 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
 
                     return kept;
                 });
-            // clear tasks
+            // pulisce le task
             tasks.length = 0;
           }
         }
       } catch (err) {
-        setError('Failed to load destinations');
+    setError('Impossibile caricare le destinazioni');
         logger.error('Error fetching destinations:', err);
       } finally {
         setLoading(false);
@@ -323,12 +337,12 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
       }
     };
 
-    // reset destinations before fetching
+  // resetta le destinazioni prima del fetch
     setDestinations([]);
     fetchDestinations();
   }, [searchQuery, seedParam]);
 
-  // Use destination name when calling add/remove so AppContext can resolve to the canonical dataset id
+  // Usa il nome della destinazione quando chiami add/remove così AppContext può risolvere all'id canonico del dataset
   const toggleFavorite = (destination: LiveDestination) => {
     const ident = destination.name || destination.id;
     if (isFavorite(ident)) {
@@ -339,7 +353,7 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
   };
 
   if (loading) {
-    // Skeleton grid while loading
+    // Skeleton grid mentre ricarica
     const skeletonCount = variant === 'hero' ? 3 : 6;
     return (
       <div className={`grid ${variant === 'hero' ? 'grid-cols-1 md:grid-cols-3 gap-6' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'} pb-12`}> 
@@ -355,7 +369,7 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
       <div className="text-center py-20">
         <div className="text-6xl mb-4">⚠️</div>
         <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Error Loading Destinations
+          Errore durante il caricamento delle destinazioni
         </h3>
         <p className="text-gray-600 dark:text-gray-400">{error}</p>
       </div>
@@ -367,10 +381,10 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
       <div className="text-center py-20">
         <div className="text-6xl mb-4">🔍</div>
         <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          No destinations found
+          Nessuna destinazione trovata
         </h3>
         <p className="text-gray-600 dark:text-gray-400">
-          Try searching for a different location
+          Prova a cercare un'altra posizione
         </p>
       </div>
     );
@@ -401,7 +415,7 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
               
-              {/* Favorite Button */}
+              {/* Pulsante Preferiti */}
               <button
                 onClick={() => toggleFavorite(destination)}
                 className="absolute top-4 right-4 p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors"
@@ -415,13 +429,13 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
                 />
               </button>
 
-              {/* Rating Badge */}
+              {/* Badge valutazione */}
               <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 flex items-center space-x-1">
                 <Star className="w-4 h-4 text-yellow-500 fill-current" />
                 <span className="text-sm font-medium">{destination.rating}</span>
               </div>
 
-              {/* Budget Badge */}
+              {/* Badge budget */}
               <div className="absolute bottom-4 left-4">
                 <span className={`px-2 py-1 rounded-full text-xs font-medium text-white ${
                   destination.budget === 'low' ? 'bg-green-500' :
@@ -432,7 +446,7 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
                 </span>
               </div>
 
-              {/* Live Data Badge */}
+              {/* Badge dati live */}
               <div className="absolute top-4 right-16">
                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-500/90 backdrop-blur-sm text-white border border-green-400/50">
                   🟢 Live
@@ -465,7 +479,7 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
                   size="sm"
                   className="bg-primary-600 hover:bg-primary-700 text-white font-medium px-4 py-2"
                   onClick={() => {
-                    // Client-side navigation to live details — include chosen image URL so detail shows the same photo
+                    // Navigazione client-side verso i dettagli live — includi l'URL dell'immagine scelta così la pagina di dettaglio mostra la stessa foto
                     const params = new URLSearchParams({ name: destination.name, lat: String(destination.lat), lon: String(destination.lon) });
                     if (destination.image) params.set('image', destination.image);
                     router.push(`/destinations/live?${params.toString()}`);

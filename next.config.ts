@@ -70,7 +70,7 @@ const nextConfig: NextConfig = {
             key: 'X-Frame-Options',
             value: 'DENY',
           },
-          // Minimal CSP that allows images and connections to trusted external APIs used by the app.
+          // CSP minimale che permette immagini e connessioni alle API esterne di fiducia usate dall'app.
           {
             key: 'Content-Security-Policy',
             value: "default-src 'self'; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.openweathermap.org https://api.geoapify.com https://api.unsplash.com https://images.unsplash.com https://source.unsplash.com https://it.wikipedia.org https://en.wikipedia.org https://*.wikipedia.org; frame-ancestors 'none';",

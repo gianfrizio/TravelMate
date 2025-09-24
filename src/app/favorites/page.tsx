@@ -23,7 +23,7 @@ export default function FavoritesPage() {
   const [activeTab, setActiveTab] = useState<'favorites' | 'itinerary'>('favorites');
 
 
-  // Normalize favorites coming from state: they might be stored as ids, names, or older object shapes.
+  // Normalizza i preferiti provenienti dallo state: possono essere memorizzati come id, nomi o vecchie forme di oggetto.
   const normalizeKey = (raw: unknown) => {
     if (raw == null) return '';
     let s = String(raw).trim();
@@ -34,7 +34,7 @@ export default function FavoritesPage() {
   const canonicalFavoriteIds = Array.from(new Set(state.favorites
     .map((f: any) => f)
     .map((val: any) => {
-      // if object with id
+      // se è un oggetto con id
       if (val && typeof val === 'object') {
         if (val.id) return String(val.id);
         if (val.name) return String(val.name);
@@ -54,7 +54,7 @@ export default function FavoritesPage() {
     .filter(Boolean) as string[]
   ));
 
-  // Helper to resolve a single raw favorite value for debugging
+  // Helper per risolvere un singolo valore raw dei preferiti a scopo di debug
   const resolveRawFavorite = (val: any) => {
     if (val && typeof val === 'object') {
       if (val.id) return String(val.id);
@@ -80,12 +80,12 @@ export default function FavoritesPage() {
     return unresolvedImages[key] || null;
   };
 
-  // Fetch images for unresolved entries (best-effort)
+  // Recupera immagini per le voci non risolte (tentativo migliorativo)
   useEffect(() => {
     const toFetch = unresolvedEntries.map(u => String(u.raw)).filter(k => !unresolvedImages[k]);
     if (toFetch.length === 0) return;
 
-    toFetch.forEach(async (city) => {
+  toFetch.forEach(async (city) => {
       try {
         const res = await fetch(`/api/city-images?city=${encodeURIComponent(city)}`);
         if (!res.ok) throw new Error('no image');
@@ -95,7 +95,7 @@ export default function FavoritesPage() {
           return;
         }
       } catch (e) {
-        // ignore
+        // ignora errori nella richiesta immagine
       }
       setUnresolvedImages(prev => ({ ...prev, [city]: null }));
     });
@@ -143,7 +143,7 @@ export default function FavoritesPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
+  {/* Intestazione */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -159,7 +159,7 @@ export default function FavoritesPage() {
           
         </motion.div>
 
-        {/* Tabs */}
+  {/* Schede */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -194,7 +194,7 @@ export default function FavoritesPage() {
           </div>
         </motion.div>
 
-        {/* Content */}
+  {/* Contenuto */}
         <AnimatePresence mode="wait">
           {activeTab === 'favorites' ? (
             <motion.div
@@ -223,7 +223,7 @@ export default function FavoritesPage() {
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                         
-                        {/* Remove button */}
+                        {/* Pulsante rimuovi */}
                         <button
                           onClick={() => removeFromFavorites(destination.id)}
                           className="absolute top-4 right-4 p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors"
@@ -231,7 +231,7 @@ export default function FavoritesPage() {
                           <Heart className="w-4 h-4 fill-current" />
                         </button>
 
-                        {/* Rating */}
+                        {/* Badge valutazione */}
                         <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 flex items-center space-x-1">
                           <Star className="w-4 h-4 text-yellow-500 fill-current" />
                           <span className="text-sm font-medium">{destination.rating}</span>
@@ -280,7 +280,7 @@ export default function FavoritesPage() {
                         </div>
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
 
-                        {/* Remove button for unresolved */}
+                        {/* Pulsante rimuovi per voci non risolte */}
                         <button
                           onClick={() => removeFromFavorites(entry.raw)}
                           className="absolute top-4 right-4 p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors"
@@ -306,7 +306,7 @@ export default function FavoritesPage() {
                         <div className="flex items-center justify-between">
                           <div />
                           <Button size="sm" onClick={() => {
-                            // Try to go to live page and pass the city name as query so user can fetch details
+                            // Prova ad andare alla pagina live e passa il nome della città come query in modo che l'utente possa recuperare i dettagli
                             window.location.href = `/destinations/live?name=${encodeURIComponent(String(entry.raw))}`;
                           }}>
                             Scopri di più
@@ -339,7 +339,7 @@ export default function FavoritesPage() {
                       className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg"
                     >
                       <div className="flex flex-col lg:flex-row lg:items-center gap-6">
-                        {/* Destination Image */}
+                        {/* Immagine della destinazione */}
                         <div className="lg:w-48 h-32 lg:h-24 rounded-xl overflow-hidden flex-shrink-0">
                           <div
                             className="w-full h-full bg-cover bg-center"
@@ -347,7 +347,7 @@ export default function FavoritesPage() {
                           />
                         </div>
 
-                        {/* Content */}
+                        {/* Contenuto */}
                         <div className="flex-1">
                           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                             <div>

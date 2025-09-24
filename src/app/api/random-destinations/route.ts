@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { destinations } from '@/data/destinations';
 
-// Simple seeded RNG (mulberry32) when a seed query param is provided
+// RNG con seed semplice (mulberry32) quando viene fornito il parametro `seed` nella query
 function mulberry32(a: number) {
   return function () {
     let t = (a += 0x6d2b79f5);
@@ -79,7 +79,7 @@ export async function GET(req: Request) {
 
     const rng = seedParam ? mulberry32(hashStringToInt(seedParam)) : Math.random;
 
-    // If diversity requested, try to pick from different continents first
+  // Se è richiesta diversità, cerca di selezionare prima da continenti differenti
     let selected = [] as typeof destinations;
 
     if (diversity) {
@@ -91,29 +91,29 @@ export async function GET(req: Request) {
       }
 
       const continentKeys = Object.keys(byContinent);
-      // Shuffle continent order
+  // Mescola l'ordine dei continenti
       const shuffledContKeys = shuffle(continentKeys, rng);
 
-      // Round-robin pick one from each continent until we reach n
+  // Round-robin: scegli uno per ogni continente finché non raggiungiamo n
       let i = 0;
       while (selected.length < n && Object.keys(byContinent).length) {
         const ck = shuffledContKeys[i % shuffledContKeys.length];
         const list = byContinent[ck];
         if (list && list.length) {
-          // pick random from list
+          // scegli casualmente dalla lista
           const pick = list.splice(Math.floor(rng() * list.length), 1)[0];
           selected.push(pick);
         } else {
-          // remove empty continent bucket from rotation
+          // rimuovi il bucket vuoto dei continenti dalla rotazione
           const idx = shuffledContKeys.indexOf(ck);
           if (idx >= 0) shuffledContKeys.splice(idx, 1);
         }
         i++;
-        // safety break
+  // break di sicurezza
         if (i > 1000) break;
       }
 
-      // if we still need more, fill with weighted or random picks from remaining pool
+  // se servono ancora elementi, riempi con scelte ponderate o casuali dal pool rimanente
       if (selected.length < n) {
         const remaining = pool.filter((p) => !selected.find((s) => s.id === p.id));
         if (weighted) {
@@ -124,7 +124,7 @@ export async function GET(req: Request) {
         }
       }
     } else {
-      // no diversity requested
+  // nessuna diversità richiesta
       if (weighted) {
         const weights = pool.map((p) => Math.max(0.1, (p.rating || 1)));
         selected = weightedSampleWithoutReplacement(pool, weights, n, rng as any);
@@ -133,7 +133,7 @@ export async function GET(req: Request) {
       }
     }
 
-    // For each selected destination, pick up to `topActivities` activities (randomized but stable if seeded)
+  // Per ogni destinazione selezionata, scegli fino a `topActivities` attività (randomizzate ma stabili se viene usato un seed)
     const results = selected.map((d) => {
       const activities = d.activities || [];
       const chosenActivities = shuffle(activities, rng as any).slice(0, Math.min(topActivities, activities.length));

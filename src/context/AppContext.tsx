@@ -19,7 +19,7 @@ type AppAction =
   | { type: 'REMOVE_FROM_ITINERARY'; payload: string }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'LOAD_FROM_STORAGE'; payload: Partial<AppState> };
-
+    
 const initialState: AppState = {
   user: null,
   favorites: [],
@@ -77,60 +77,60 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  // Load from localStorage on mount
+  // Carica da localStorage al montaggio
   useEffect(() => {
-    // Read raw saved values
+  // Legge i valori salvati grezzi
     const rawFavorites: unknown = JSON.parse(localStorage.getItem('travelmate-favorites') || '[]');
     const rawItinerary: unknown = JSON.parse(localStorage.getItem('travelmate-itinerary') || '[]');
 
-    // Helper to resolve identifiers (id or name) to canonical dataset id
+  // Helper per risolvere identificatori (id o nome) all'id canonico del dataset
     const normalizeKey = (raw: unknown) => {
       if (raw == null) return '';
       let s = String(raw).trim();
-      // If the string contains a comma like 'Rome, Italy', take the first part
+  // Se la stringa contiene una virgola come 'Rome, Italy', prendi la prima parte
       if (s.includes(',')) s = s.split(',')[0].trim();
       return s.toLowerCase();
     };
 
     const resolveId = (ident: unknown): string | null => {
       if (!ident) return null;
-      // If it's an object with id or name, prefer those
+  // Se è un oggetto con id o name, preferiscili
       if (typeof ident === 'object' && ident !== null) {
-        // @ts-ignore - dynamic shape from localStorage
+  // @ts-ignore - struttura dinamica proveniente da localStorage
         if ('id' in ident && (ident as any).id) return String((ident as any).id);
-        // @ts-ignore
+  // @ts-ignore
         if ('name' in ident && (ident as any).name) return String((ident as any).name);
       }
 
       const s = String(ident).trim();
 
-      // Try match by id first (exact)
+  // Prova prima a cercare per id (esatto)
       const byId = destinations.find(d => d.id === s);
       if (byId) return byId.id;
 
-      // Normalize and try matching by name more flexibly
+  // Normalizza e prova a confrontare per nome in modo più flessibile
       const sNorm = normalizeKey(s);
       const byExactName = destinations.find(d => d.name.toLowerCase() === sNorm);
       if (byExactName) return byExactName.id;
 
-      // Try substring matches (e.g. 'Rome' vs 'Rome, Italy' or 'New York City')
+  // Prova confronti per sottostringa (es. 'Rome' vs 'Rome, Italy' o 'New York City')
       const byIncludes = destinations.find(d => d.name.toLowerCase().includes(sNorm) || sNorm.includes(d.name.toLowerCase()));
       if (byIncludes) return byIncludes.id;
 
       return null;
     };
 
-    // Normalize favorites: try to resolve saved values to canonical ids when possible.
-    // Keep unresolved raw strings so they remain visible in the UI (we don't want to silently drop user's saved values).
+  // Normalizza i preferiti: prova a risolvere i valori salvati in id canonici quando possibile.
+  // Mantieni le stringhe grezze non risolte così rimangono visibili nell'UI (non vogliamo eliminare silenziosamente i valori salvati dall'utente).
     let favorites: string[] = [];
     if (Array.isArray(rawFavorites)) {
       const resolvedList = rawFavorites.map((item: any) => {
         const resolved = resolveId(item);
-        // If resolved, use canonical id; otherwise keep original raw value (stringified)
+  // Se risolto, usa l'id canonico; altrimenti mantieni il valore grezzo originale (stringificato)
         return resolved || (item == null ? null : String(item));
       }).filter((v: any) => v !== null) as string[];
 
-      // Deduplicate while preserving order
+  // Deduplica mantenendo l'ordine
       const deduped: string[] = [];
       const seen = new Set<string>();
       for (const v of resolvedList) {
@@ -140,22 +140,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // If normalization changed what's stored, persist it back to localStorage for future loads
+  // Se la normalizzazione ha modificato ciò che è salvato, persisti nuovamente su localStorage per i prossimi caricamenti
       try {
         const rawJson = localStorage.getItem('travelmate-favorites') || '[]';
         const rawArr = JSON.parse(rawJson);
-        // Compare simple JSON.stringify results to detect change
+  // Confronta i risultati di JSON.stringify per rilevare modifiche
         if (JSON.stringify(rawArr) !== JSON.stringify(deduped)) {
           localStorage.setItem('travelmate-favorites', JSON.stringify(deduped));
         }
       } catch (e) {
-        // ignore storage errors
+  // ignora errori di storage
       }
 
       favorites = deduped;
     }
 
-    // Normalize itinerary entries' destinationId when possible
+  // Normalizza gli elementi dell'itinerario (destinationId) quando possibile
     let itinerary: any[] = [];
     if (Array.isArray(rawItinerary)) {
       itinerary = rawItinerary.map((it: any) => {
@@ -168,7 +168,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return { ...it, destinationId: destId };
       });
 
-      // Persist normalized itinerary back to storage if it changed shape (simple heuristic)
+  // Persiste l'itinerario normalizzato su storage se ha cambiato forma (euristica semplice)
       try {
         const rawJsonIt = localStorage.getItem('travelmate-itinerary') || '[]';
         const rawArrIt = JSON.parse(rawJsonIt);
@@ -176,20 +176,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
           localStorage.setItem('travelmate-itinerary', JSON.stringify(itinerary));
         }
       } catch (e) {
-        // ignore storage errors
+  // ignora errori di storage
       }
     }
 
     dispatch({ type: 'LOAD_FROM_STORAGE', payload: { favorites, itinerary } });
     
-    // Forza sempre il tema scuro
+  // Forza sempre il tema scuro
     const root = document.documentElement;
     root.classList.add('dark');
     root.setAttribute('data-theme', 'dark');
     root.style.colorScheme = 'dark';
   }, []);
 
-  // Save to localStorage when state changes
+  // Salva su localStorage quando lo stato cambia
   useEffect(() => {
     localStorage.setItem('travelmate-favorites', JSON.stringify(state.favorites));
   }, [state.favorites]);
@@ -199,16 +199,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [state.itinerary]);
 
   const addToFavorites = (destinationId: string) => {
-    // Try to resolve to canonical dataset id by id or name (case-insensitive)
+  // Prova a risolvere all'id canonico del dataset per id o nome (case-insensitive)
     const resolve = (ident: string) => {
       if (!ident) return ident;
-      // If matches an existing dataset id, return it
+  // Se corrisponde a un id del dataset, restituiscilo
       const byId = destinations.find(d => d.id === ident);
       if (byId) return byId.id;
-      // Try to match by name (case-insensitive)
+  // Prova a confrontare per nome (case-insensitive)
       const byName = destinations.find(d => d.name.toLowerCase() === ident.toLowerCase());
       if (byName) return byName.id;
-      // fallback to provided identifier
+  // fallback all'identificatore fornito
       return ident;
     };
 
@@ -245,7 +245,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const isFavorite = (destinationId: string) => {
     if (!destinationId) return false;
-    // resolve similarly to add/remove
+  // risolvi in modo analogo ad add/remove
     const byId = destinations.find(d => d.id === destinationId);
     if (byId && state.favorites.includes(byId.id)) return true;
     const byName = destinations.find(d => d.name.toLowerCase() === destinationId.toLowerCase());

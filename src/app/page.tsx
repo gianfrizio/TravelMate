@@ -9,7 +9,7 @@ import Button from '@/components/ui/Button';
 import LocationSearch from '@/components/LocationSearch';
 import dynamic from "next/dynamic";
 
-// Lazy-load non-critical components to reduce initial bundle size
+// Lazy-load dei componenti non critici per ridurre la dimensione del bundle iniziale
 const LiveDestinations = dynamic(() => import("../components/LiveDestinations"), {
   ssr: false,
   loading: () => <div className="py-16">Loading...</div>,
@@ -32,9 +32,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
+  {/* Sezione Hero */}
       <section className="relative h-screen flex items-center justify-center text-white overflow-hidden">
-        {/* Background Image (next/image for optimized LCP) */}
+  {/* Immagine di sfondo (usiamo next/image per ottimizzare LCP) */}
         <div className="absolute inset-0 z-0">
           <Image
             src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1920&h=1080&fit=crop&crop=center"
@@ -47,7 +47,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-black/40" />
         </div>
 
-        {/* Hero Content */}
+  {/* Contenuto Hero */}
         <div className="relative z-10 text-center max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight text-white">
             Scopri il{' '}
@@ -63,7 +63,7 @@ export default function Home() {
             salvare itinerari e scoprire i migliori consigli di viaggio.
           </p>
 
-          {/* Search Bar */}
+          {/* Barra di ricerca */}
           <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-8">
             <div className="relative">
               <Suspense fallback={<div className="h-12" />}>
@@ -72,7 +72,7 @@ export default function Home() {
             </div>
           </form>
 
-          {/* CTA Buttons */}
+          {/* Pulsanti CTA */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/destinations">
               <Button size="lg" className="w-full sm:w-auto">
@@ -88,7 +88,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Scroll Indicator */}
+  {/* Indicatore di scroll */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -142,7 +142,7 @@ export default function Home() {
               variant="outline"
               className="bg-white/10 backdrop-blur-md border-white/30 text-white hover:bg-white/20"
               onClick={() => {
-                // Generate a short random seed and navigate
+                // Genera un breve seed casuale e naviga
                 const seed = `${Date.now().toString(36)}-${Math.floor(Math.random() * 100000).toString(36)}`;
                 window.location.href = `/destinations?seed=${encodeURIComponent(seed)}`;
               }}

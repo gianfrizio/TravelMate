@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const lng = searchParams.get('lng');
   const location = searchParams.get('location');
 
-  // If location is provided, resolve it via Geoapify Places/Geocoding to get lat/lng
+  // Se viene fornita una location, risolvila tramite Geoapify Places/Geocoding per ottenere lat/lng
   let resolvedLat = lat;
   let resolvedLng = lng;
 
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'API key mancante' }, { status: 500 });
   }
 
-  // Use Current Weather v2.5 endpoint which is supported by standard API keys
+  // Usa l'endpoint Current Weather v2.5 supportato dalle API key standard
   const targetUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${encodeURIComponent(
     resolvedLat
   )}&lon=${encodeURIComponent(resolvedLng)}&appid=${encodeURIComponent(API_KEY)}&units=metric&lang=it`;

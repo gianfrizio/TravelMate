@@ -61,8 +61,31 @@ Copiale in `.env.local` (non committare):
 ```env
 GEOAPIFY_API_KEY=your_geoapify_api_key
 OPENWEATHER_API_KEY=your_openweather_api_key
+UNSPLASH_ACCESS_KEY=yor_unsplash_access_key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
+
+## API esterne utilizzate
+
+Il progetto integra diverse API esterne per geocoding, meteo, immagini e dati di riferimento. Di seguito l'elenco delle API principali usate nel codice, inclusi i servizi di fallback che il codice richiede o prova a consultare:
+
+- `Geoapify` — geocoding forward/reverse per disambiguare nomi di città e ottenere coordinate. Env: `GEOAPIFY_API_KEY`.
+- `OpenWeather` — dati meteo correnti (proxy tramite `/api/weather`). Env: `OPENWEATHER_API_KEY`.
+- `Wikipedia REST / Media List` — usata per summary, estratti lunghi e media-list della pagina (preferisce la versione italiana quando disponibile). Nessuna chiave richiesta.
+- `Wikidata` — consultata per determinare se una voce Wikipedia rappresenta un luogo (P31/instance of). Nessuna chiave richiesta.
+- `Unsplash` — prima scelta per foto di città quando `UNSPLASH_ACCESS_KEY` è fornita (env: `UNSPLASH_ACCESS_KEY`).
+- `Pexels` — fallback per foto se Wikipedia/Unsplash non forniscono immagini utilizzabili (env: `PEXELS_API_KEY`).
+- `Picsum / source.unsplash` — sorgenti statiche/fallback (no API key) usate come ultima risorsa per placeholder immagini.
+
+Note sull'ordine di fallback per le immagini (come implementato in `src/app/api/city-images/route.ts`):
+
+1. Wikipedia summary thumbnail / page media-list (preferito, verifica qualità e filtri su bandiere/loghi)
+2. Unsplash (se `UNSPLASH_ACCESS_KEY` è configurata) con query basate su landmark estratti
+3. Pexels (se `PEXELS_API_KEY` è configurata)
+4. Source statico / Picsum / source.unsplash come fallback
+
+Se vuoi, posso aggiungere snippet di esempio per ottenere le chiavi API (link ufficiali) o uno script che verifica la presenza delle variabili d'ambiente in `npm run preflight`.
+
 
 ## Struttura principale del progetto
 

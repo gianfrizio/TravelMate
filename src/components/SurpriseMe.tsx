@@ -16,7 +16,7 @@ export default function SurpriseMe({ defaultCount = 3 }: { defaultCount?: number
         setResults(data.results || []);
       }
     } catch (e) {
-      // ignore
+      // ignora
     } finally {
       setLoading(false);
     }

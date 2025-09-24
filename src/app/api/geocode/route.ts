@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get('q') || '';
   const limit = request.nextUrl.searchParams.get('limit') || '5';
-  // default language for geocoding results (prefer Italian)
+  // lingua predefinita per i risultati di geocoding (preferisci l'italiano)
   const lang = request.nextUrl.searchParams.get('lang') || 'it';
 
   const GEO_KEY = process.env.GEOAPIFY_API_KEY;
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'GEOAPIFY_API_KEY mancante' }, { status: 500 });
   }
 
-  // Request results localized to preferred language
+  // Richiedi risultati localizzati nella lingua preferita
   const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(q)}&limit=${encodeURIComponent(
     limit
   )}&lang=${encodeURIComponent(lang)}&apiKey=${encodeURIComponent(GEO_KEY)}`;
@@ -26,9 +26,9 @@ export async function GET(request: NextRequest) {
     const data = JSON.parse(raw);
     const suggestions = (data.features || []).map((f: any) => ({
       id: f.properties.place_id || f.properties.osm_id || `${f.properties.lat},${f.properties.lon}`,
-      // formatted contains the localized name (e.g., "Roma, Italia" when lang=it)
+  // formatted contiene il nome localizzato (es. "Roma, Italia" quando lang=it)
       name: f.properties.formatted || f.properties.name || f.properties.city || f.properties.country,
-      // provide a separate country field when available (localized)
+  // fornisce un campo country separato quando disponibile (localizzato)
       country: f.properties.country || f.properties.country_name || null,
       lat: f.properties.lat || (f.geometry && f.geometry.coordinates[1]),
       lon: f.properties.lon || (f.geometry && f.geometry.coordinates[0])

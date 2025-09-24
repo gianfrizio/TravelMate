@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { blogPosts } from '@/data/destinations';
 import Button from '@/components/ui/Button';
 
-// Questa è una Server Component per il SSG
+// Questo è un Server Component per il SSG
 export default function BlogPage() {
   const featuredPost = blogPosts[0];
   const otherPosts = blogPosts.slice(1);
@@ -25,7 +25,7 @@ export default function BlogPage() {
         <div className="mb-16">
           <div className="bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-2xl">
             <div className="grid grid-cols-1 lg:grid-cols-2">
-              {/* Image */}
+              {/* Immagine */}
               <div className="h-64 lg:h-full min-h-[300px] relative">
                 <div
                   className="absolute inset-0 bg-cover bg-center"
@@ -39,7 +39,7 @@ export default function BlogPage() {
                 </div>
               </div>
 
-              {/* Content */}
+              {/* Contenuto */}
               <div className="p-8 lg:p-12 flex flex-col justify-center">
                 <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-4">
                   <div className="flex items-center space-x-1">
@@ -86,7 +86,7 @@ export default function BlogPage() {
           </div>
         </div>
 
-        {/* Other Posts Grid */}
+        {/* altri articoli */}
         <div>
           <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
             Altri Articoli
@@ -149,7 +149,7 @@ export default function BlogPage() {
           </div>
         </div>
 
-        {/* CTA Section */}
+        {/* Sezione CTA */}
         <div className="mt-16 bg-gradient-to-r from-primary-600 to-secondary-600 rounded-3xl p-8 text-center text-white">
           <h3 className="text-2xl font-bold mb-4">
             Vuoi condividere la tua esperienza di viaggio?

@@ -1,4 +1,5 @@
-// Small logger wrapper: only prints logs in non-production environments
+// Piccolo logger wrapper per debug in sviluppo
+// In produzione, non fa nulla
 const isDev = process.env.NODE_ENV !== 'production';
 
 const debug = (...args: any[]) => {

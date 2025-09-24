@@ -15,7 +15,7 @@ export function useWeather({ lat, lng, location }: UseWeatherProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // We allow fetching by either coordinates (lat && lng) OR by location name
+    // Permettiamo il fetch sia tramite coordinate (lat && lng) SIA tramite nome della località
     if ((!lat || !lng) && !location) return;
 
     const fetchWeather = async () => {
@@ -53,10 +53,10 @@ export function useWeather({ lat, lng, location }: UseWeatherProps) {
     isLoading,
     error,
     refetch: () => {
-      // Trigger a refetch by resetting weatherData and letting effect run again
-      setWeatherData(null);
-      setError(null);
-      // Note: the effect depends on lat/lng/location, so ensure caller provides at least location or coords
+  // Forza un nuovo fetch resettando weatherData e permettendo all'useEffect di rieseguire
+  setWeatherData(null);
+  setError(null);
+  // Nota: l'effetto dipende da lat/lng/location, quindi assicurati che il chiamante fornisca almeno location o coordinate
     }
   };
 }

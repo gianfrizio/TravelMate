@@ -93,11 +93,11 @@ export default function DestinationDetailPage({ params }: PageProps) {
           url: window.location.href,
         });
       } catch (err) {
-        // Use logger instead of direct console.log
+      // Usa il logger invece di console.log diretto
         logger.warn('Errore condivisione:', err);
       }
     } else {
-      // Fallback: copia URL negli appunti
+  // Fallback: copia URL negli appunti
       navigator.clipboard.writeText(window.location.href);
     }
   };

@@ -8,13 +8,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Read optional coordinates and prepare query title
+  // Leggi coordinate opzionali e prepara il titolo di query
     let lat = request.nextUrl.searchParams.get('lat');
     let lon = request.nextUrl.searchParams.get('lon');
     let queryTitle = cityName;
     const GEO_KEY = process.env.GEOAPIFY_API_KEY;
 
-    // If no coords provided but we have a Geoapify key, try forward geocoding to disambiguate the city name
+  // Se non sono fornite coordinate ma abbiamo la chiave Geoapify, prova il forward geocoding per disambiguare il nome della città
     if ((!lat || !lon) && GEO_KEY) {
       try {
         const geoUrl = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(cityName)}&limit=6&format=json&apiKey=${encodeURIComponent(GEO_KEY)}`;
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
         if (geoResp.ok) {
           const geo = await geoResp.json();
           const feats = geo?.features || [];
-          // Prefer features that look like populated places (city, town, village, municipality)
+          // Preferisci feature che sembrano luoghi abitati (city, town, village, municipality)
           const placeFeature = feats.find((f: any) => {
             const p = f?.properties || {};
             const join = JSON.stringify(p).toLowerCase();
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
           if (placeFeature) {
             const candidate = placeFeature?.properties?.name || placeFeature?.properties?.formatted;
             if (candidate) queryTitle = candidate;
-            // if the feature has geometry, use its coordinates as a hint for later image selection
+            // se la feature ha una geometry, usa le sue coordinate come suggerimento per la selezione dell'immagine
             const coords = placeFeature?.geometry?.coordinates;
             if (coords && coords.length >= 2) {
               lon = String(coords[0]);
@@ -41,11 +41,11 @@ export async function GET(request: NextRequest) {
           }
         }
       } catch (err) {
-        // ignore forward geocoding failures and continue
+        // ignora eventuali errori del forward geocoding e continua
       }
     }
 
-    // If lat/lon were provided explicitly, try to disambiguate using Geoapify reverse geocoding (if API key available)
+  // Se lat/lon sono state fornite esplicitamente, prova a disambiguare usando il reverse geocoding di Geoapify (se la API key è disponibile)
     if (lat && lon && GEO_KEY) {
       try {
         const geoUrl = `https://api.geoapify.com/v1/geocode/reverse?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&format=json&apiKey=${encodeURIComponent(GEO_KEY)}`;
@@ -57,25 +57,25 @@ export async function GET(request: NextRequest) {
           if (candidate) queryTitle = candidate;
         }
       } catch (err) {
-        // ignore and fallback to cityName
+        // ignora l'errore e fai fallback al nome della città
       }
     }
 
-    // Step 1: Try the Italian Wikipedia summary endpoint for an exact page using the disambiguated title, fallback to English
+  // Step 1: prova l'endpoint summary di Wikipedia in italiano per una pagina esatta usando il titolo disambiguato, fallback in inglese
     const summaryUrlIt = `https://it.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(queryTitle)}`;
     const summaryUrlEn = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(queryTitle)}`;
     let usedLang: 'it' | 'en' = 'it';
     let searchResponse = await fetch(summaryUrlIt);
     if (!searchResponse.ok) {
-      // try English as fallback
+      // prova l'inglese come fallback
       searchResponse = await fetch(summaryUrlEn);
       usedLang = 'en';
     }
     let searchData: any = null;
 
-    // If summary endpoint returns 404, try the search endpoint to find a matching title
+  // Se l'endpoint summary restituisce 404, prova l'endpoint di ricerca per trovare un titolo corrispondente
     if (searchResponse.status === 404) {
-      // Prefer searching in the used language, fallback to English search if needed
+      // Preferisci la ricerca nella lingua usata; se necessario esegui il fallback alla ricerca in inglese
       const searchHost = usedLang === 'it' ? 'it.wikipedia.org' : 'en.wikipedia.org';
       const searchApi = `https://${searchHost}/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(cityName)}&origin=*`;
       const searchApiResp = await fetch(searchApi);
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
         const searchApiData = await searchApiResp.json();
         const allResults = searchApiData?.query?.search || [];
 
-        // Prefer results whose snippet indicates a place/city page
+  // Preferisci risultati il cui snippet indica una pagina di tipo luogo/città
         const placeKeywords = ['città', 'comune', 'city', 'town', 'municipality', 'metropoli', 'capoluogo', 'popolazione'];
         let chosenTitle: string | null = null;
 
@@ -98,13 +98,13 @@ export async function GET(request: NextRequest) {
           if (chosenTitle) break;
         }
 
-        // Fallback to the first result if none clearly match a place page
+  // Fallback al primo risultato se nessuno corrisponde chiaramente a una pagina di luogo
         const first = allResults[0];
         if (!chosenTitle && first && first.title) chosenTitle = first.title;
 
         if (chosenTitle) {
           const title = chosenTitle;
-          // fetch the summary in the same language as the search
+          // recupera il summary nella stessa lingua della ricerca
           searchResponse = await fetch(`https://${searchHost}/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
           usedLang = searchHost.startsWith('it.') ? 'it' : 'en';
         }
@@ -115,11 +115,11 @@ export async function GET(request: NextRequest) {
       searchData = await searchResponse.json();
     }
     
-    // Check if we have a thumbnail image
-    // Try to fetch a longer extract (more content) from the Wikipedia API
+  // Controlla se disponiamo di una thumbnail
+  // Prova a ottenere un estratto più lungo (più contenuto) dall'API di Wikipedia
     let longExtract: string | null = null;
     try {
-      // Try extracting a longer text from Italian Wikipedia first, otherwise fallback to English
+      // Prova a estrarre un testo più lungo da Wikipedia in italiano prima; altrimenti esegui il fallback all'inglese
       const title = searchData?.title || cityName;
       const extractApiIt = `https://it.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&explaintext=1&exchars=2000&titles=${encodeURIComponent(
         title
@@ -136,11 +136,11 @@ export async function GET(request: NextRequest) {
         longExtract = pages?.[firstKey]?.extract || null;
       }
     } catch (e) {
-      // ignore extract failures
+  // ignora i fallimenti dell'estrazione
     }
 
-    // Prepare landmark map (hoisted so media-list fallback can also benefit)
-  // Normalize pageTitle: strip parenthetical disambiguation like 'Rome (disambiguation)'
+    // Prepara la mappa di landmark (estratta in alto in modo che anche la fallback media-list ne benefici)
+  // Normalizza pageTitle: rimuovi disambiguazioni tra parentesi come 'Rome (disambiguation)'
   let pageTitleRaw = searchData?.title || cityName;
   const pageTitle = String(pageTitleRaw).replace(/\s*\([^)]*\)\s*/g, '').trim();
     const LANDMARKS: Record<string, string[]> = {
@@ -169,13 +169,13 @@ export async function GET(request: NextRequest) {
     const keyGuess = Object.keys(LANDMARKS).find(k => normalize(pageTitle).includes(k) || normalize(cityName).includes(k));
     const landmarks = keyGuess ? LANDMARKS[keyGuess] : [];
 
-    // Ensure the Wikipedia page we found is actually a place (city/town). If not, drop wiki description to avoid mixing unrelated content.
+  // Verifica che la pagina Wikipedia trovata sia effettivamente un luogo (city/town). Se no, scarta la descrizione wiki per evitare contenuti non correlati
     try {
       const wikiHost = usedLang === 'it' ? 'it.wikipedia.org' : 'en.wikipedia.org';
-      // isWikipediaPagePlace is defined later in this file
-      // If the page is not a place, clear searchData/longExtract so we don't use unrelated descriptions
-      // Note: we intentionally swallow errors here and continue with fallback image selection
-      // which will then rely more on cityName and extracted landmarks.
+  // isWikipediaPagePlace è definita più avanti in questo file
+  // Se la pagina non rappresenta un luogo, cancella searchData/longExtract per evitare descrizioni non correlate
+  // Nota: intenzionalmente silenziamo gli errori qui e continuiamo con la selezione immagine di fallback
+  // che poi si baserà maggiormente su cityName e sui landmark estratti.
       // eslint-disable-next-line no-await-in-loop
       const pageIsPlace = await isWikipediaPagePlace(pageTitle, wikiHost);
       if (!pageIsPlace) {
@@ -184,11 +184,11 @@ export async function GET(request: NextRequest) {
         longExtract = null;
       }
     } catch (e) {
-      // ignore and continue
+      // ignora e continua
     }
 
-    // Helper: extract candidate landmark phrases from a Wikipedia extract.
-    // Simple heuristic: capture multi-word capitalized sequences and filter by length/frequency.
+  // Helper: estrai frasi candidate di landmark da un estratto di Wikipedia.
+  // Euristica semplice: cattura sequenze di parole capitalizzate e filtra per lunghezza/frequenza.
     function extractLandmarksFromText(text: string) {
       if (!text || text.length < 50) return [];
       // remove parentheses content and short parentheses
@@ -200,7 +200,7 @@ export async function GET(request: NextRequest) {
       for (const m of matches) {
         const s = m.trim();
         if (s.length < 4) continue;
-        // ignore obvious sentences starts that are not landmarks
+  // ignora le parole iniziali ovvie che non sono landmark
         if (/^(The|A|An|Il|La|Le|Lo|I|Gli|Una|Un)\b/.test(s)) continue;
         freq[s] = (freq[s] || 0) + 1;
       }
@@ -209,16 +209,16 @@ export async function GET(request: NextRequest) {
       return candidates.slice(0, 6);
     }
 
-    // Prefer Unsplash for city photos when an access key is configured.
+  // Preferisci Unsplash per le foto della città quando è configurata una access key.
     const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY;
     if (UNSPLASH_KEY) {
       try {
-        // (landmarks is hoisted above)
+  // (landmarks è definito sopra)
 
-        // Build prioritized queries: try landmark-focused queries first
+  // Costruisci query prioritarie: prova prima query focalizzate sui landmark
         const queries: string[] = [];
         if (landmarks.length) {
-          // Monument-first: try pure landmark names alone, then combined with city
+          // Monument-first: prova prima i nomi dei landmark da soli, poi combinati con il nome della città
           for (const lm of landmarks) {
             queries.push(`${lm}`); // e.g. 'Colosseo'
             queries.push(`${pageTitle} ${lm}`);
@@ -234,23 +234,23 @@ export async function GET(request: NextRequest) {
         }
 
         let results: any[] = [];
-        // If we don't have static landmarks, try extracting landmark-like phrases from longExtract (Wikipedia)
+  // Se non abbiamo landmark statici, prova ad estrarre frasi simili a landmark da longExtract (Wikipedia)
         if (!landmarks.length && longExtract) {
           try {
             const auto = extractLandmarksFromText(longExtract);
             if (auto && auto.length) {
-              // use capitalized phrases as pseudo-landmarks
+              // usa frasi con iniziale maiuscola come pseudo-landmark
               for (const a of auto) {
                 queries.push(a);
                 queries.push(`${pageTitle} ${a}`);
               }
             }
           } catch (e) {
-            // ignore
+            // ignora
           }
         }
 
-        // Try queries in order; stop on first query that returns candidates
+  // Prova le query in ordine; fermati alla prima che restituisce risultati
         for (const q of queries) {
           const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&per_page=8&orientation=landscape`;
           const uResp = await fetch(unsplashUrl, { headers: { Authorization: `Client-ID ${UNSPLASH_KEY}` } });
@@ -260,7 +260,7 @@ export async function GET(request: NextRequest) {
           if (results.length) break;
         }
 
-        // Score candidates: prefer those mentioning the city or the landmark keywords in location/title/alt_description or having city-related tags
+  // Valuta i candidati: preferisci quelli che menzionano la città o parole chiave dei landmark in location/title/alt_description o che hanno tag legati alla città
         const cityLower = (pageTitle || cityName).toLowerCase();
         const cityTags = ['city', 'skyline', 'cityscape', 'panorama', 'view', 'downtown', 'piazza', 'urban'];
         const landmarkKeywords = landmarks.map(l => normalize(l));
@@ -274,7 +274,7 @@ export async function GET(request: NextRequest) {
           const loc = String(photo?.location?.title || '').toLowerCase();
           const tags = (photo?.tags || []).map((t: any) => String(t.title || '').toLowerCase());
 
-          // Server-side blacklist: filter out obvious irrelevant subjects (birds, animals, closeups)
+          // Blacklist lato server: filtra soggetti evidentemente irrilevanti (uccelli, animali, primi piani)
           const blacklisted = ['gull', 'seagull', 'bird', 'dog', 'cat', 'puppy', 'portrait', 'face', 'selfie', 'person', 'people', 'gabbiano', 'gabbiani', 'uccello', 'uccelli', 'persona', 'persone'];
           let isBlacklisted = false;
           try {
@@ -285,14 +285,14 @@ export async function GET(request: NextRequest) {
               }
             }
           } catch (e) {
-            // ignore
+            // ignora
           }
           if (isBlacklisted) {
-            // skip obviously irrelevant photos early
+            // salta in anticipo foto chiaramente irrilevanti
             continue;
           }
 
-          // City/landmark matches
+          // Corrispondenze città/landmark
           if (alt.includes(cityLower) || desc.includes(cityLower)) score += 30;
           if (loc && loc.includes(cityLower)) score += 40;
           for (const t of tags) {
@@ -303,7 +303,7 @@ export async function GET(request: NextRequest) {
             if (alt.includes(ct) || desc.includes(ct)) score += 5;
           }
 
-          // Strong boost when landmark keywords appear in alt/desc/loc/tags
+          // Forte boost quando le parole chiave dei landmark compaiono in alt/desc/loc/tags
           for (const lk of landmarkKeywords) {
             if (!lk) continue;
             if (alt.includes(lk) || desc.includes(lk)) score += 80;
@@ -311,13 +311,13 @@ export async function GET(request: NextRequest) {
             if (tags.some((t: string) => t.includes(lk))) score += 60;
           }
 
-          // small boost for higher likes/popularity
+          // piccolo incremento per maggior numero di like/popolarità
           score += (photo?.likes || 0) * 0.01;
 
           const cand = photo?.urls?.regular || photo?.urls?.full || photo?.urls?.raw;
           if (!cand) continue;
 
-          // Penalize obvious placeholders by file extension or known path patterns
+          // Penalizza placeholder evidenti da estensione del file o pattern di percorso noti
           const lc = String(cand).toLowerCase();
           if (lc.endsWith('.svg') || lc.includes('/flag_') || lc.includes('coat_of_arms')) score -= 100;
 
@@ -327,13 +327,13 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        if (best && best.cand) {
+  if (best && best.cand) {
           const content = (longExtract || searchData?.extract || '')?.toLowerCase() || '';
           const activities = generateActivitiesFromText(content);
           console.debug('[city-images] selected unsplash photo', { city: pageTitle, cand: best.cand, score: best.score, alt: best.photo?.alt_description, location: best.photo?.location?.title });
           return NextResponse.json({
             imageUrl: best.cand,
-            // prefer photo alt description but fall back to the localized wiki title
+            // preferisci la descrizione alt della foto ma fai fallback al titolo wiki localizzato
             title: best.photo?.alt_description || (usedLang === 'it' ? searchData?.title : searchData?.title) || pageTitle,
             description: searchData?.extract || null,
             longExtract,
@@ -343,16 +343,16 @@ export async function GET(request: NextRequest) {
           });
         }
       } catch (err) {
-        // ignore Unsplash errors and continue with Wikipedia
+        // ignora errori Unsplash e continua con Wikipedia
       }
     }
 
     if (searchData && searchData.thumbnail && searchData.thumbnail.source) {
-      // More aggressive filtering to avoid flags, logos, coats of arms, or administrative symbols
+      // Filtraggio più aggressivo per evitare bandiere, loghi, stemmi o simboli amministrativi
       const thumbSrc = String(searchData.thumbnail.source || '').toLowerCase();
       const thumbTitle = String(searchData.title || '').toLowerCase();
       
-      // Enhanced patterns to catch more flag/logo variations
+  // Pattern migliorati per catturare più variazioni di bandiere/loghi
       const badImagePattern = /flag|bandiera|bandera|flagge|drapeau|coat_of_arms|coat-of-arms|logo|seal|emblem|stemma|crest|arms|heraldic|municipal|city_flag|locator|map|symbol|badge|insignia/;
       const badTitlePattern = /flag|bandiera|bandera|flagge|drapeau|coat|arms|emblem|stemma|seal|logo|crest|heraldic|municipal|symbol|badge|insignia/;
       
@@ -362,21 +362,21 @@ export async function GET(request: NextRequest) {
           acceptThumb = false;
         }
       } catch (e) {
-        // ignore and allow thumbnail
+        // ignora e consenti la thumbnail
       }
 
       if (acceptThumb) {
-        // Get high resolution version by modifying the URL
+  // Ottieni la versione ad alta risoluzione modificando l'URL
         const imageUrl = searchData.thumbnail.source.replace(/\/\d+px-/, '/800px-');
 
-        // Quick HEAD validation: ensure it's an image, not SVG, and not tiny (avoid icons/flags)
+  // Validazione HEAD rapida: assicurati che sia un'immagine, non SVG, e non troppo piccola (evita icone/bandiere)
         try {
           const headResp = await fetch(imageUrl, { method: 'HEAD' });
           const ct = String(headResp.headers.get('content-type') || '').toLowerCase();
           const cl = Number(headResp.headers.get('content-length') || '0');
           const badUrlPatternLocal = /\/flag[_-]|flag_of_|coat_of_arms|coat-of-arms|logo|seal|symbol|insignia|badge|chart|graph|diagram|screenshot/i;
           if (ct.startsWith('image/') && !ct.includes('svg') && cl > 10000 && !badUrlPatternLocal.test(String(imageUrl).toLowerCase())) {
-            // Build activities and price heuristics based on the Italian longExtract if available
+            // Costruisci activities e euristiche basate sull'eventuale longExtract in italiano
             const content = (longExtract || searchData.extract || '').toLowerCase();
             const activities = generateActivitiesFromText(content);
 
@@ -391,15 +391,15 @@ export async function GET(request: NextRequest) {
               lang: usedLang
             });
           }
-        } catch (err) {
-          // if HEAD fails, don't accept the thumbnail (fallthrough to media-list)
+          } catch (err) {
+          // se HEAD fallisce, non accettare la thumbnail (passa al media-list)
         }
       }
-      // otherwise fall-through to media-list lookup
+      // altrimenti prosegui con il lookup della media-list della pagina
     }
 
-    // Fallback: Try to get images from the page
-    // Use the same language host we used for the summary to fetch the media list (prefer Italian when available)
+  // Fallback: prova a ottenere immagini dalla pagina
+  // Usa lo stesso host linguistico usato per il summary per recuperare la media list (preferisci Italiano se disponibile)
     const wikiHost = usedLang === 'it' ? 'it.wikipedia.org' : 'en.wikipedia.org';
     const imagesUrl = `https://${wikiHost}/api/rest_v1/page/media-list/${encodeURIComponent(pageTitle)}`;
     const imagesResponse = await fetch(imagesUrl);
@@ -407,14 +407,14 @@ export async function GET(request: NextRequest) {
       if (imagesResponse.ok) {
       const imagesData = await imagesResponse.json();
       
-      // Enhanced filtering for media items - avoid flags, logos, maps, administrative symbols
+  // Filtraggio avanzato per gli elementi media - evita bandiere, loghi, mappe, simboli amministrativi
       const items = imagesData.items || [];
-  // Titles/URLs that strongly indicate the media item is not a photographic city image
+  // Titoli/URLs che indicano fortemente che l'elemento multimediale non è un'immagine fotografica della città
   const badTitle = /flag|bandiera|bandera|flagge|drapeau|coat_of_arms|coat-of-arms|coat|arms|logo|seal|emblem|stemma|crest|heraldic|municipal|city_flag|locator|map|symbol|badge|insignia|administrative|official|chart|graph|diagram|population|statistics|statistic|table|screenshot|infographic|poster|diagramma|grafico|grafici/i;
   const badUrlPattern = /\/flag[_-]|flag_of_|\/thumb\/.*Flag|coat_of_arms|coat-of-arms|logo|seal|symbol|insignia|badge|chart|graph|diagram|population|stats|statistic|histogram|bar_chart|diagramma|grafico|screenshot|poster/i;
       let chosenUrl: string | null = null;
       
-      // First pass: look for high-quality landscape/cityscape images
+  // Primo passaggio: cerca immagini landscape/cityscape di buona qualità
       for (const item of items) {
         if (!item || item.type !== 'image') continue;
         const title = String(item.title || '').toLowerCase();
@@ -425,11 +425,11 @@ export async function GET(request: NextRequest) {
         const thumbSrcItem = String(item.thumbnail?.source || '').toLowerCase();
         if (badUrlPattern.test(origSrc) || badUrlPattern.test(thumbSrcItem)) continue;
 
-        // Prefer images that sound like cityscapes, landscapes, or general views
+  // Preferisci immagini che indicano cityscapes, paesaggi o vedute generali
         const goodImagePattern = /skyline|panorama|view|landscape|cityscape|street|piazza|downtown|centro|vista|veduta|harbor|port|river|riverside|mountain|montagna/i;
         const isGoodImage = goodImagePattern.test(title) || goodImagePattern.test(origSrc) || goodImagePattern.test(thumbSrcItem);
 
-        // Monument boost: if the item title or source mentions one of the known landmarks, prefer it strongly
+  // Boost per monumenti: se il titolo o la source dell'item menziona uno dei landmark conosciuti, preferiscilo fortemente
         let monumentBoost = 0;
         try {
           for (const lm of landmarks) {
@@ -445,9 +445,9 @@ export async function GET(request: NextRequest) {
         
         if (isGoodImage && item.original && item.original.source) {
           const cand = item.original.source;
-          // Quick rejection on suspicious URL patterns
+          // Rapido rifiuto su pattern URL sospetti
           if (badUrlPattern.test(String(cand).toLowerCase())) continue;
-          // Validate the chosen image URL returns an image content-type and is not tiny/svg
+          // Verifica che l'URL immagine selezionato ritorni un content-type immagine e non sia piccolo/svg
           try {
             const headResp = await fetch(cand, { method: 'HEAD' });
             const ct = String(headResp.headers.get('content-type') || '').toLowerCase();
@@ -457,13 +457,13 @@ export async function GET(request: NextRequest) {
               break;
             }
           } catch (err) {
-            // If HEAD fails, prefer skipping this candidate to avoid wrong resources
+            // Se HEAD fallisce, salta questo candidato per evitare risorse errate
             continue;
           }
         }
       }
       
-      // Second pass: if no good cityscape found, take any acceptable image (skip flagged URLs)
+  // Secondo passaggio: se non è stata trovata una cityscape valida, prendi la prima immagine accettabile (salta URL segnalati)
       if (!chosenUrl) {
         for (const item of items) {
           if (!item || item.type !== 'image') continue;
@@ -475,7 +475,7 @@ export async function GET(request: NextRequest) {
           const thumbSrcItem = String(item.thumbnail?.source || '').toLowerCase();
           if (badUrlPattern.test(origSrc) || badUrlPattern.test(thumbSrcItem)) continue;
 
-          // prefer original if present
+          // preferisci l'originale se presente
           if (item.original && item.original.source) {
             const cand = item.original.source;
             if (badUrlPattern.test(String(cand).toLowerCase())) continue;
@@ -509,7 +509,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-        if (chosenUrl) {
+  if (chosenUrl) {
         const content = (longExtract || searchData.extract || '').toLowerCase();
         const activities = generateActivitiesFromText(content);
         console.debug('[city-images] returning wikipedia media-list image', { title: searchData.title, imageUrl: chosenUrl });
@@ -525,13 +525,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // If no image found, return the summary info (if any) or fallback to null with generated activities/price
+    // Se non viene trovata alcuna immagine, restituisci le informazioni del sommario (se presenti) o fai fallback a null con attività generate
   const content = (longExtract || searchData?.extract || '')?.toLowerCase() || '';
   const activities = generateActivitiesFromText(content);
 
     
 
-    // Try Pexels (high-quality free photos) as a fallback when Wikipedia didn't provide a usable image
+  // Prova Pexels (foto gratuite di alta qualità) come fallback se Wikipedia non ha fornito un'immagine utilizzabile
     const PEXELS_KEY = process.env.PEXELS_API_KEY;
     if (PEXELS_KEY) {
       try {
@@ -560,12 +560,12 @@ export async function GET(request: NextRequest) {
     });
               }
             } catch (err) {
-              // if HEAD fails, ignore and continue to final fallback
+              // se la richiesta HEAD fallisce, ignora e continua verso il fallback finale
             }
           }
         }
       } catch (err) {
-        // ignore Pexels failures and continue to final fallback
+        // ignora i fallimenti di Pexels e continua verso il fallback finale
       }
     }
 
@@ -579,7 +579,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    // Log at debug level and return fallback info (avoid noisy stack traces for expected 404s)
+  // Registra a livello debug e restituisci informazioni di fallback (evita stack trace rumorosi per 404 attesi)
     console.debug('[city-images] fallback for', cityName, String(error));
     return NextResponse.json({
       imageUrl: null,
@@ -630,9 +630,9 @@ function generateActivitiesFromText(content: string) {
   return acts.slice(0, 6);
 }
 
-// price estimation removed - pricing is no longer provided by the API
+// stima dei prezzi rimossa - i prezzi non sono più forniti dall'API
 
-  // Heuristic: determine whether a Wikipedia page title corresponds to a place (city/town/village)
+  // Euristica: determina se il titolo di una pagina Wikipedia corrisponde a un luogo (città/paese/paesino)
   async function isWikipediaPagePlace(title: string, host: string) {
     try {
       const query = `https://${host}/w/api.php?action=query&format=json&prop=categories|pageprops&titles=${encodeURIComponent(title)}&cllimit=50&origin=*`;
@@ -643,7 +643,7 @@ function generateActivitiesFromText(content: string) {
       const pageKey = Object.keys(pages)[0];
       const page = pages[pageKey] || {};
 
-      // Check categories for place-related keywords (Italian/English)
+  // Controlla le categorie per parole chiave correlate a luoghi (Italiano/Inglese)
       const categories = (page.categories || []).map((c: any) => String(c.title || '').toLowerCase());
       const placeKeywords = ['città', 'comune', 'capoluogo', 'cittadini', 'popolazione', 'city', 'town', 'village', 'municipality', 'human settlement', 'populated'];
       for (const cat of categories) {
@@ -652,7 +652,7 @@ function generateActivitiesFromText(content: string) {
         }
       }
 
-      // If pageprops contains a wikibase_item, consult Wikidata to inspect P31 (instance of)
+  // Se pageprops contiene un wikibase_item, consulta Wikidata per ispezionare P31 (instance of)
       const wikibase = page.pageprops?.wikibase_item;
       if (wikibase) {
         try {
@@ -666,7 +666,7 @@ function generateActivitiesFromText(content: string) {
           const ids = p31.map((c: any) => c?.mainsnak?.datavalue?.value?.id).filter(Boolean);
           if (ids.length === 0) return false;
 
-          // Fetch labels for the P31 ids to detect 'city'/'town'/'village' in label
+          // Recupera le etichette per gli ID P31 per rilevare 'city'/'town'/'village' nelle etichette
           const idsChunk = ids.join('|');
           const labelsUrl = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${encodeURIComponent(idsChunk)}&props=labels&languages=en|it&format=json&origin=*`;
           const labelsResp = await fetch(labelsUrl);
@@ -685,7 +685,7 @@ function generateActivitiesFromText(content: string) {
             }
           }
         } catch (e) {
-          // ignore wikidata errors and fall back to categories check
+          // ignora gli errori di Wikidata e fai fallback al controllo delle categorie
         }
       }
 

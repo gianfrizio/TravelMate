@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-// ThemeScript is intentionally a no-op client component because an inline script in RootLayout
-// already sets the initial theme before hydration. Keeping this component avoids accidental
-// duplicate script injection elsewhere.
+// ThemeScript è intenzionalmente un componente client no-op perché uno script inline in RootLayout
+// imposta già il tema iniziale prima dell'hydration. Mantenere questo componente evita l'inserimento
+// accidentale di script duplicati altrove.
 export default function ThemeScript() {
   return null;
 }

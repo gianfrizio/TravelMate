@@ -14,12 +14,12 @@ export async function GET(request: NextRequest) {
   try {
     let url = '';
     if (lat && lon) {
-      // Use reverse geocoding to get place info for coordinates
+      // Usa reverse geocoding per ottenere informazioni sul luogo dalle coordinate
       url = `https://api.geoapify.com/v1/geocode/reverse?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(
         lon
       )}&format=json&apiKey=${encodeURIComponent(GEO_KEY)}`;
     } else if (q) {
-      // Use forward geocoding search by text
+      // Usa il forward geocoding cercando per testo
       url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(q)}&limit=1&apiKey=${encodeURIComponent(
         GEO_KEY
       )}`;
@@ -35,35 +35,35 @@ export async function GET(request: NextRequest) {
     }
 
     let data = JSON.parse(raw);
-    // If debug flag is present, return raw features for inspection
+    // Se è presente il flag debug, restituisci le features raw per ispezione
     const debug = request.nextUrl.searchParams.get('debug');
     if (debug === '1') {
       return NextResponse.json({ features: data.features || [] });
     }
-    // Choose the best feature using a heuristic that prefers administrative / place features
+    // Seleziona la feature migliore usando un'euristica che preferisce feature amministrative o di tipo luogo
     let feature = null;
     const features = (data.features && Array.isArray(data.features) ? data.features : []);
     if (features.length === 1) {
       feature = features[0];
     } else if (features.length > 1) {
-      // scoring: higher score for city/place/admin-like features
+      // scoring: punteggio più alto per feature di tipo città/luogo/amministrativo
       const scoreFeature = (f: any) => {
         const p = f.properties || {};
         let score = 0;
-        // prefer explicit place types
+        // preferisci tipi espliciti di luogo
         const placeTypes = ['city', 'town', 'village', 'hamlet', 'municipality'];
         if (p.type && placeTypes.includes(String(p.type).toLowerCase())) score += 50;
-        // class can indicate 'place' or 'boundary'
+        // la proprietà class può indicare 'place' o 'boundary'
         if (p.class === 'place') score += 30;
         if (p.class === 'boundary' || p.class === 'administrative') score += 25;
-        // presence of administrative fields is a strong signal
+        // la presenza di campi amministrativi è un segnale forte
         if (p.city || p.town || p.village) score += 40;
         if (p.state || p.county || p.region) score += 20;
-        // prefer features with formatted address
+        // preferisci feature con indirizzo formattato
         if (p.formatted) score += 5;
-        // deprioritize POIs (point of interest)
+        // de-prioritizza i POI (point of interest)
         if (p.class === 'poi' || /poi|atm|shop|amenity/i.test(String(p.type || ''))) score -= 20;
-        // small boost for higher rank if available
+        // piccolo incremento per rank più alto quando disponibile
         if (typeof p.rank === 'number') score += Math.max(0, 10 - p.rank);
         return score;
       };
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       feature = best;
     }
 
-    // If reverse geocoding returned no features, try a forward search fallback using the coords as text
+  // Se il reverse geocoding non ha restituito feature, prova un fallback con forward search usando le coordinate come testo
     if (!feature && lat && lon) {
       try {
         const searchUrl = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(lat + "," + lon)}&limit=1&apiKey=${encodeURIComponent(
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // If the selected feature looks like a POI, attempt a forward search for the city/administrative place
+  // Se la feature selezionata sembra un POI, prova una ricerca forward per trovare la città/luogo amministrativo
     if (feature) {
       const p = feature.properties || {};
       const poiLike = p.class === 'poi' || /poi|amenity|tourism|historic|shop|atm/i.test(String(p.type || ''));

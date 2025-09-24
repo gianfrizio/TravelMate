@@ -32,7 +32,7 @@ export default function LocationSearch({ onSelect }: { onSelect: (s: Suggestion)
         const fetchSuggestions = async () => {
       setLoading(true);
       try {
-        	    // Request suggestions localized to Italian
+        // Richiedi suggerimenti localizzati in italiano
         	    const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}&limit=5&lang=it`);
         const data = await res.json();
         if (!aborted) setSuggestions(data.suggestions || []);
@@ -50,7 +50,7 @@ export default function LocationSearch({ onSelect }: { onSelect: (s: Suggestion)
     };
   }, [q]);
 
-  // Keyboard navigation for suggestions
+  // Navigazione da tastiera per i suggerimenti
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!suggestions || suggestions.length === 0) return;
     if (e.key === 'ArrowDown') {

@@ -53,7 +53,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  favorites: string[]; // destination IDs
+  favorites: string[]; // ID delle destinazioni
   itinerary: ItineraryItem[];
 }
 

@@ -52,10 +52,10 @@ const Footer = () => {
 
   return (
     <footer className="bg-slate-900 dark:bg-slate-950 text-white">
-      {/* Main Footer Content */}
+  {/* Contenuto principale del footer */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
-          {/* Brand Section */}
+          {/* Sezione Brand */}
           <div className="lg:col-span-2">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -74,7 +74,7 @@ const Footer = () => {
                 destinazioni incredibili e creare ricordi indimenticabili.
               </p>
               
-              {/* Contact Info */}
+              {/* Informazioni di contatto */}
               <div className="space-y-3 text-sm text-slate-400">
                 <div className="flex items-center space-x-3">
                   <MapPin className="w-4 h-4" />
@@ -92,7 +92,7 @@ const Footer = () => {
             </motion.div>
           </div>
 
-          {/* Footer Links */}
+          {/* Link del footer */}
           {Object.entries(footerLinks).map(([title, links], index) => (
             <motion.div
               key={title}
@@ -118,7 +118,7 @@ const Footer = () => {
           ))}
         </div>
 
-        {/* Social Links */}
+  {/* Link social */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -152,7 +152,7 @@ const Footer = () => {
           </div>
         </motion.div>
 
-        {/* Newsletter */}
+  {/* Newsletter */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -166,7 +166,7 @@ const Footer = () => {
         </motion.div>
       </div>
 
-      {/* Bottom Footer */}
+  {/* Parte inferiore del footer */}
       <div className="bg-slate-950 dark:bg-black py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between flex-wrap gap-4">

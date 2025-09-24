@@ -56,7 +56,7 @@ const Navbar = () => {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Navigazione Desktop */}
           <div className="hidden md:flex items-center space-x-8">
             {navItems.map((item) => (
               <Link
@@ -83,9 +83,9 @@ const Navbar = () => {
             ))}
           </div>
 
-          {/* Favorites & Mobile Menu Button */}
+          {/* Preferiti & Pulsante Menu Mobile */}
           <div className="flex items-center space-x-4">
-            {/* Favorites Count Badge */}
+            {/* Badge conteggio preferiti */}
             <Link href="/favorites" className="relative" aria-label="Vai ai preferiti">
               <motion.div
                 whileHover={{ scale: 1.1 }}
@@ -101,7 +101,7 @@ const Navbar = () => {
               </motion.div>
             </Link>
 
-            {/* Mobile menu button */}
+            {/* Pulsante menu mobile */}
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
@@ -115,7 +115,7 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Mobile Navigation */}
+  {/* Navigazione mobile */}
         <AnimatePresence>
           {isOpen && (
             <motion.div

@@ -13,7 +13,7 @@ export const destinations: Destination[] = [
       'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=800&h=600&fit=crop',
       'https://images.unsplash.com/photo-1601581875309-fafbf2d3ed3a?w=800&h=600&fit=crop'
     ],
-    budget: 'high',
+    budget: 'high',   
     type: 'beach',
     rating: 4.8,
     coordinates: { lat: 36.3932, lng: 25.4615 },

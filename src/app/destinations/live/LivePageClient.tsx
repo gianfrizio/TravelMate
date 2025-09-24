@@ -23,13 +23,13 @@ export default function LivePageClient() {
   const [longExtract, setLongExtract] = useState<string | null>(null);
   const [apiDescription, setApiDescription] = useState<string | null>(null);
   const [showMore, setShowMore] = useState(false);
-  // ...existing code...
+        // Se un parametro immagine esplicito è presente nell'URL (dalla lista), preferiscilo.
   useEffect(() => {
-    // Try to find local destination data (case-insensitive match on name)
+  // Prova a trovare i dati della destinazione locale (confronto case-insensitive sul nome)
     const found = destinations.find(d => d.name.toLowerCase() === (name || '').toLowerCase());
     if (found) setLocalInfo(found);
 
-    // Fetch image and description from our API
+  // Recupera immagine e descrizione dalla nostra API
     const fetchImage = async () => {
       try {
         const params = new URLSearchParams({ city: name || '' });
@@ -38,7 +38,8 @@ export default function LivePageClient() {
         const resp = await fetch(`/api/city-images?${params.toString()}`);
         if (resp.ok) {
           const data = await resp.json();
-          // If an explicit image param was provided in the URL (from the listing), prefer it
+          // Fallback immagine.
+        // Se un parametro immagine esplicito è presente nell'URL (dalla lista), preferiscilo
           const forcedImage = params.get('image') || new URLSearchParams(window.location.search).get('image');
           if (forcedImage) {
             setImageUrl(forcedImage);
@@ -51,7 +52,7 @@ export default function LivePageClient() {
             setLocalInfo((prev: any) => ({ ...(prev || {}), activities: data.activities }));
           }
 
-          // image fallback
+          // Fallback immagine
           if (!data.imageUrl && !new URLSearchParams(window.location.search).get('image')) {
             const fallback = localInfo?.image || (localInfo?.images && localInfo.images[0]) || `https://source.unsplash.com/featured/?${encodeURIComponent(name || '')}`;
             setImageUrl(fallback);
@@ -68,7 +69,7 @@ export default function LivePageClient() {
 
     if (name) fetchImage();
 
-    // Fetch place details from Geoapify if we have coordinates or name
+  // Recupera i dettagli del luogo da Geoapify se sono disponibili coordinate o nome
     const fetchPlaceDetails = async () => {
       try {
         const params = new URLSearchParams();
@@ -94,7 +95,7 @@ export default function LivePageClient() {
     if (name || (lat && lon)) fetchPlaceDetails();
   }, [name, lat, lon]);
 
-  // Compute description and image src deterministically
+  // Calcola descrizione e src dell'immagine in modo deterministico
   const primaryText = (longExtract && String(longExtract)) || apiDescription || localInfo?.description || '';
   const isExpandable = Boolean(primaryText && primaryText.length > 400);
   const displayedDescription = () => {
@@ -119,7 +120,7 @@ export default function LivePageClient() {
                 fill
                 sizes="(max-width: 1024px) 100vw, 800px"
                 onError={(e) => {
-                  // next/image does not expose the underlying HTMLImageElement directly; use a fallback by switching to a CDN URL
+                                  // next/image non espone direttamente l'HTMLImageElement sottostante; usa un fallback cambiando l'URL al CDN
                   setImageUrl(`https://source.unsplash.com/800x600/?${encodeURIComponent(name || '')}`);
                 }}
               />
@@ -156,11 +157,11 @@ export default function LivePageClient() {
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-100 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                {/* Favorites action */}
+                {/* azione preferiti */}
               </div>
               <div>
                   <Button size="sm" className="px-2 py-1 text-sm flex items-center gap-2" onClick={() => {
-                    // Resolve canonical id if we have local dataset
+                    // Risolvi l'id canonico se abbiamo un dataset locale
                     const resolvedId = localInfo?.id || (destinations.find(d => d.name.toLowerCase() === (name || '').toLowerCase())?.id) || name;
                     if (isFavorite(resolvedId)) {
                       removeFromFavorites(resolvedId);
