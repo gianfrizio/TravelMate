@@ -5,14 +5,15 @@ import { Search, MapPin } from 'lucide-react';
 
 type Suggestion = { id: string; name: string; lat?: number; lon?: number; country?: string };
 
-export default function LocationSearch({ onSelect }: { onSelect: (s: Suggestion) => void }) {
-  const [q, setQ] = useState('');
+export default function LocationSearch({ onSelect, initialQuery, autoFocus, onQueryChange, onEnter }: { onSelect: (s: Suggestion) => void; initialQuery?: string; autoFocus?: boolean; onQueryChange?: (q: string) => void; onEnter?: (q: string) => void }) {
+  const [q, setQ] = useState(initialQuery || '');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLUListElement | null>(null);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -50,6 +51,18 @@ export default function LocationSearch({ onSelect }: { onSelect: (s: Suggestion)
     };
   }, [q]);
 
+  // set initial query or focus when props change
+  useEffect(() => {
+    if (typeof initialQuery === 'string') {
+      setQ(initialQuery);
+      // If initialQuery comes from a continent link, do not open the suggestions list automatically.
+      setShow(false);
+    }
+    if (autoFocus && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [initialQuery, autoFocus]);
+
   // Navigazione da tastiera per i suggerimenti
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!suggestions || suggestions.length === 0) return;
@@ -67,6 +80,12 @@ export default function LocationSearch({ onSelect }: { onSelect: (s: Suggestion)
         onSelect(s);
         setShow(false);
         setQ(s.name);
+        if (typeof onQueryChange === 'function') onQueryChange(s.name);
+        if (typeof onEnter === 'function') onEnter(s.name);
+      } else {
+        // No suggestion selected: notify parent of raw enter
+        if (typeof onEnter === 'function') onEnter(q);
+        setShow(false);
       }
     } else if (e.key === 'Escape') {
       setShow(false);
@@ -78,8 +97,9 @@ export default function LocationSearch({ onSelect }: { onSelect: (s: Suggestion)
       <div className="relative flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent transition-all">
         <Search className="w-5 h-5 text-gray-400 ml-3 flex-shrink-0" />
         <input
+          ref={inputRef}
           value={q}
-          onChange={(e) => { setQ(e.target.value); setShow(true); }}
+          onChange={(e) => { setQ(e.target.value); setShow(true); if (typeof onQueryChange === 'function') onQueryChange(e.target.value); }}
           placeholder="Cerca città o destinazione..."
           aria-label="Cerca città o destinazione"
           role="combobox"

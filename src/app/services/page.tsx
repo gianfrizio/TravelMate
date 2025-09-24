@@ -71,19 +71,7 @@ export default function ServicesPage() {
         </div>
       </section>
 
-      <section className="mb-12">
-        <h2 className="text-2xl font-semibold mb-4">Domande frequenti</h2>
-        <div className="space-y-4">
-          <details className="p-4 bg-white/50 dark:bg-slate-800 rounded-lg border">
-            <summary className="font-medium">Come funziona la pianificazione degli itinerari?</summary>
-            <p className="text-sm text-slate-500 mt-2">Compila le preferenze e ricevi un itinerario suggerito che puoi modificare liberamente.</p>
-          </details>
-          <details className="p-4 bg-white/50 dark:bg-slate-800 rounded-lg border">
-            <summary className="font-medium">Offrite pacchetti per gruppi?</summary>
-            <p className="text-sm text-slate-500 mt-2">Sì, contattaci per una proposta personalizzata per gruppi e viaggi aziendali.</p>
-          </details>
-        </div>
-      </section>
+      {/* Le FAQ sono state spostate nella pagina /faq */}
 
       <footer className="text-center">
         <Link href="/contact" className="inline-block px-4 py-2 bg-primary-600 text-white rounded-lg">Contattaci per maggiori informazioni</Link>

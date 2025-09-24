@@ -30,6 +30,8 @@ export async function GET(request: NextRequest) {
       name: f.properties.formatted || f.properties.name || f.properties.city || f.properties.country,
   // fornisce un campo country separato quando disponibile (localizzato)
       country: f.properties.country || f.properties.country_name || null,
+      // country_code ISO (es. 'it', 'us') se disponibile
+      country_code: f.properties.country_code || null,
       lat: f.properties.lat || (f.geometry && f.geometry.coordinates[1]),
       lon: f.properties.lon || (f.geometry && f.geometry.coordinates[0])
     }));

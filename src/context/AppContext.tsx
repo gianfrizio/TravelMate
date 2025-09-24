@@ -9,6 +9,11 @@ interface AppState {
   favorites: string[];
   itinerary: ItineraryItem[];
   isLoading: boolean;
+  lastSearchState: {
+    query: string;
+    continent: string;
+    timestamp: number;
+  } | null;
 }
 
 type AppAction = 
@@ -18,13 +23,15 @@ type AppAction =
   | { type: 'ADD_TO_ITINERARY'; payload: ItineraryItem }
   | { type: 'REMOVE_FROM_ITINERARY'; payload: string }
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'LOAD_FROM_STORAGE'; payload: Partial<AppState> };
+  | { type: 'LOAD_FROM_STORAGE'; payload: Partial<AppState> }
+  | { type: 'SET_LAST_SEARCH'; payload: { query: string; continent: string } };
     
 const initialState: AppState = {
   user: null,
   favorites: [],
   itinerary: [],
   isLoading: false,
+  lastSearchState: null,
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -57,6 +64,15 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'LOAD_FROM_STORAGE':
       return { ...state, ...action.payload };
     
+    case 'SET_LAST_SEARCH':
+      return { 
+        ...state, 
+        lastSearchState: {
+          ...action.payload,
+          timestamp: Date.now()
+        }
+      };
+    
     default:
       return state;
   }
@@ -70,6 +86,8 @@ interface AppContextType {
   addToItinerary: (item: Omit<ItineraryItem, 'id' | 'addedAt'>) => void;
   removeFromItinerary: (itemId: string) => void;
   isFavorite: (destinationId: string) => boolean;
+  setLastSearch: (query: string, continent: string) => void;
+  getLastSearch: () => { query: string; continent: string } | null;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -180,7 +198,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    dispatch({ type: 'LOAD_FROM_STORAGE', payload: { favorites, itinerary } });
+    // Carica anche l'ultimo stato di ricerca da sessionStorage
+    let lastSearchState = null;
+    try {
+      const savedSearch = sessionStorage.getItem('travelmate-last-search');
+      if (savedSearch) {
+        const parsed = JSON.parse(savedSearch);
+        const timeDiff = Date.now() - parsed.timestamp;
+        // Considera valido se ha meno di 30 minuti
+        if (timeDiff < 30 * 60 * 1000) {
+          lastSearchState = {
+            query: parsed.query || '',
+            continent: parsed.continent || '',
+            timestamp: parsed.timestamp
+          };
+        }
+      }
+    } catch (e) {
+      // ignora errori di parsing
+    }
+
+    dispatch({ type: 'LOAD_FROM_STORAGE', payload: { favorites, itinerary, lastSearchState } });
     
   // Forza sempre il tema scuro
     const root = document.documentElement;
@@ -253,6 +291,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return state.favorites.includes(destinationId);
   };
 
+  const setLastSearch = (query: string, continent: string) => {
+    dispatch({ type: 'SET_LAST_SEARCH', payload: { query, continent } });
+    // Salva anche su sessionStorage per persistenza temporanea
+    sessionStorage.setItem('travelmate-last-search', JSON.stringify({
+      query,
+      continent,
+      timestamp: Date.now()
+    }));
+  };
+
+  const getLastSearch = () => {
+    // Prima controlla lo state in memoria
+    if (state.lastSearchState) {
+      const timeDiff = Date.now() - state.lastSearchState.timestamp;
+      // Considera valido se ha meno di 30 minuti
+      if (timeDiff < 30 * 60 * 1000) {
+        return {
+          query: state.lastSearchState.query,
+          continent: state.lastSearchState.continent
+        };
+      }
+    }
+
+    // Fallback su sessionStorage
+    try {
+      const saved = sessionStorage.getItem('travelmate-last-search');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const timeDiff = Date.now() - parsed.timestamp;
+        if (timeDiff < 30 * 60 * 1000) {
+          return {
+            query: parsed.query || '',
+            continent: parsed.continent || ''
+          };
+        }
+      }
+    } catch (e) {
+      // ignora errori di parsing
+    }
+
+    return null;
+  };
+
   const value: AppContextType = {
     state,
     dispatch,
@@ -261,6 +342,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addToItinerary,
     removeFromItinerary,
     isFavorite,
+    setLastSearch,
+    getLastSearch,
   };
 
   return (

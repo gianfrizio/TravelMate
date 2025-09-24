@@ -29,6 +29,39 @@ import Link from 'next/link';
 import Button from '@/components/ui/Button';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import countryToContinent from '@/data/countryToContinent.json';
+
+// Map common country abbreviations / short forms to the full names used in our dataset
+const COUNTRY_ALIASES: Record<string, string> = {
+  // common long/short names
+  'usa': 'united states',
+  'u.s.a': 'united states',
+  'u.s.': 'united states',
+  'us': 'united states',
+  'uk': 'united kingdom',
+  'u.k.': 'united kingdom',
+  'gb': 'united kingdom',
+  'great britain': 'united kingdom',
+  'england': 'united kingdom',
+  'uae': 'united arab emirates',
+  'ivory coast': "côte d'ivoire",
+  'south korea': 'south korea',
+  'north korea': 'north korea',
+  'russia': 'russia',
+  // common ISO codes mapped to full country name used in dataset
+  'ae': 'united arab emirates',
+  'it': 'italy',
+  'fr': 'france',
+  'nl': 'netherlands',
+  'es': 'spain',
+  'pt': 'portugal',
+  'de': 'germany',
+  'br': 'brazil',
+  'za': 'south africa',
+  'au': 'australia',
+  'jp': 'japan',
+  'cn': 'china',
+};
 
 type LiveDestination = {
   id: string;
@@ -45,25 +78,85 @@ type LiveDestination = {
 
 const POPULAR_CITIES = [
   'Rome, Italy',
-  'Paris, France', 
-  'Tokyo, Japan',
-  'New York, USA',
-  'London, UK',
-  'Barcelona, Spain',
-  'Amsterdam, Netherlands',
-  'Prague, Czech Republic',
-  'Vienna, Austria',
+  'Milan, Italy',
+  'Venice, Italy',
   'Florence, Italy',
+  'Naples, Italy',
+  'Turin, Italy',
+  'Paris, France', 
+  'Nice, France',
+  'Lyon, France',
+  'Marseille, France',
+  'Bordeaux, France',
+  'Tokyo, Japan',
+  'Osaka, Japan',
+  'Kyoto, Japan',
+  'Sapporo, Japan',
+  'Nagoya, Japan',
+  'New York, USA',
+  'Los Angeles, USA',
+  'San Francisco, USA',
+  'Chicago, USA',
+  'Miami, USA',
+  'Seattle, USA',
+  'London, UK',
+  'Edinburgh, UK',
+  'Manchester, UK',
+  'Bristol, UK',
+  'Barcelona, Spain',
+  'Madrid, Spain',
+  'Valencia, Spain',
+  'Seville, Spain',
+  'Bilbao, Spain',
+  'Amsterdam, Netherlands',
+  'Rotterdam, Netherlands',
+  'Prague, Czech Republic',
+  'Budapest, Hungary',
+  'Vienna, Austria',
+  'Salzburg, Austria',
   'Santorini, Greece',
+  'Athens, Greece',
   'Bali, Indonesia',
+  'Borneo, Indonesia',
+  'Jakarta, Indonesia',
+  'Kuala Lumpur, Malaysia',
+  'Singapore, Singapore',
   'Dubai, UAE',
+  'Abu Dhabi, UAE',
   'Istanbul, Turkey',
+  'Antalya, Turkey',
   'Sydney, Australia',
+  'Melbourne, Australia',
+  'Perth, Australia',
+  'Brisbane, Australia',
+  'Auckland, New Zealand',
+  'Wellington, New Zealand',
   'Cape Town, South Africa',
+  'Johannesburg, South Africa',
+  'Durban, South Africa',
   'Rio de Janeiro, Brazil',
+  'São Paulo, Brazil',
+  'Brasília, Brazil',
+  'Buenos Aires, Argentina',
+  'Lima, Peru',
+  'Santiago, Chile',
+  'Bogotá, Colombia',
+  'Mexico City, Mexico',
+  'Cancún, Mexico',
   'Bangkok, Thailand',
+  'Phuket, Thailand',
+  'Hanoi, Vietnam',
+  'Ho Chi Minh City, Vietnam',
+  'Beijing, China',
+  'Shanghai, China',
+  'Hong Kong, Hong Kong',
+  'Seoul, South Korea',
+  'Busan, South Korea',
   'Berlin, Germany',
-  'Lisbon, Portugal'
+  'Munich, Germany',
+  'Hamburg, Germany',
+  'Lisbon, Portugal',
+  'Porto, Portugal'
 ];
 
 // Funzione per generare URL immagini affidabili
@@ -135,8 +228,10 @@ const CityImage = ({ src, alt, cityName }: { src: string; alt: string; cityName:
   );
 };
 
-export default function LiveDestinations({ searchQuery = '', maxItems, variant = 'default', onLoading }: { 
+export default function LiveDestinations({ searchQuery = '', continent, maxItems, variant = 'default', onLoading }: { 
   searchQuery?: string; 
+  continent?: string;
+  countryFilter?: string;
   maxItems?: number; 
   variant?: 'default' | 'hero',
   onLoading?: (loading: boolean) => void
@@ -187,6 +282,16 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
     return a;
   };
 
+  const normalizeCountryKey = (raw: string) => {
+    if (!raw) return '';
+    let v = raw.toLowerCase().trim();
+    // remove dots and extra whitespace
+    v = v.replace(/\./g, '').replace(/\s+/g, ' ').trim();
+    // map aliases (usa, uk, uae, etc.)
+    if (COUNTRY_ALIASES[v]) return COUNTRY_ALIASES[v];
+    return v;
+  };
+
   useEffect(() => {
         const fetchDestinations = async () => {
       setLoading(true);
@@ -194,9 +299,83 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
       setError(null);
 
       try {
-        const citiesToFetch = searchQuery.trim()
+              // Filtra per continente se specificato (normalizza e supporta alias come "North America")
+              const rawCont = continent ? String(continent).toLowerCase().trim() : null;
+              const CONTINENT_ALIASES: Record<string,string> = {
+                'north america': 'america',
+                'south america': 'america',
+                'americas': 'america',
+                'oceania': 'oceania',
+                'australia': 'oceania',
+                'europe': 'europe',
+                'asia': 'asia',
+                'africa': 'africa',
+              };
+              const continentFilter = rawCont ? (CONTINENT_ALIASES[rawCont] || rawCont) : null;
+
+        // Cache per le destinazioni complete per evitare ricerche ripetute
+        const destinationsCache: Map<string, LiveDestination[]> = (globalThis as any).__GM_DESTINATIONS_CACHE || new Map();
+        (globalThis as any).__GM_DESTINATIONS_CACHE = destinationsCache;
+
+        // Crea una chiave cache basata sui parametri di ricerca
+        const cacheKey = `${searchQuery || 'empty'}_${continentFilter || 'empty'}_${seedParam || 'empty'}_${maxItems || 12}`;
+        
+        // Controlla se abbiamo già i risultati in cache (validi per 5 minuti)
+        const cached = destinationsCache.get(cacheKey);
+        if (cached && Array.isArray(cached) && cached.length > 0) {
+          const cacheTimestamp = (cached as any).__timestamp || 0;
+          const isRecentCache = Date.now() - cacheTimestamp < 5 * 60 * 1000; // 5 minuti
+          
+          if (isRecentCache) {
+            setDestinations(cached);
+            setLoading(false);
+            onLoading?.(false);
+            return;
+          }
+        }
+
+        const citiesSource = (() => {
+          if (!continentFilter) return POPULAR_CITIES;
+          // Usa il dataset completo per mappare i paesi: filtra POPULAR_CITIES estraendo il paese e verificando il continente
+          return POPULAR_CITIES.filter(c => {
+            const parts = c.split(',');
+            const countryPart = parts[1] ? parts[1].trim() : '';
+            const normalized = normalizeCountryKey(countryPart);
+            const mapped = (countryToContinent as Record<string,string>)[normalized];
+            // debug per-item mapping in dev
+            if (process.env.NODE_ENV !== 'production') {
+              // eslint-disable-next-line no-console
+              console.debug('[LiveDestinations] POPULAR_CITIES mapping', { raw: countryPart, normalized, mapped, continentFilter });
+            }
+            // If we couldn't map by the simple split, try a few fallback heuristics
+            if (!mapped) {
+              const rest = parts.slice(1).join(',').trim();
+              const alt = normalizeCountryKey(rest);
+              const mappedAlt = (countryToContinent as Record<string,string>)[alt];
+              if (process.env.NODE_ENV !== 'production') {
+                // eslint-disable-next-line no-console
+                console.debug('[LiveDestinations] POPULAR_CITIES alt mapping', { rest, alt, mappedAlt });
+              }
+              if (mappedAlt) {
+                return mappedAlt === continentFilter;
+              }
+              return false;
+            }
+            return mapped === continentFilter;
+          });
+        })();
+
+      // debug log to help diagnose filtering issues
+      // eslint-disable-next-line no-console
+      console.debug('LiveDestinations: continent=', continent, 'continentFilter=', continentFilter, 'citiesSource.length=', citiesSource.length);
+
+        // If a continent is provided we want to use the continent-based source even if
+        // the `searchQuery` equals the continent name (the footer links prefill the search
+        // input for UX but the actual filtering should be continent-based).
+        const isContinentSearch = continentFilter && searchQuery && searchQuery.trim().toLowerCase() === String(continentFilter).toLowerCase();
+        const citiesToFetch = (searchQuery.trim() && !isContinentSearch)
           ? [searchQuery]
-          : seededShuffle(POPULAR_CITIES, seedParam).slice(0, maxItems || 12);
+          : seededShuffle(citiesSource, seedParam).slice(0, maxItems || 12);
 
   // Semplici cache in memoria per evitare ricerche ripetute durante la sessione
         const geocodeCache: Map<string, any> = (globalThis as any).__GM_GEOCODE_CACHE || new Map();
@@ -230,6 +409,38 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
           const cityName = (suggestion.name || '').split(',')[0].trim();
           // Preferisci un campo `country` esplicito se fornito dalla route di geocoding
           const country = suggestion.country || suggestion.name.split(',').slice(1).join(',').trim() || 'Unknown';
+          const countryCode = suggestion.country_code || suggestion.properties?.country_code || '';
+
+          // Se è stato richiesto un continente, verifica che il country rispetti il continente mappato
+          if (continentFilter) {
+            // Prova a normalizzare il campo country e mappare col dataset completo
+            let mapped: string | undefined;
+            // Preferisci il country_code ISO se fornito
+            if (countryCode) {
+              const code = String(countryCode).toLowerCase();
+              const alias = COUNTRY_ALIASES[code];
+              if (alias) mapped = (countryToContinent as Record<string,string>)[alias];
+            }
+
+            if (!mapped) {
+              const countryLower = (country || '').toLowerCase();
+              // Rimuovi articoli e punteggiatura comuni
+              const normalized = countryLower.replace(/\./g, '').replace(/\s+/g, ' ').trim();
+              const alias = COUNTRY_ALIASES[normalized];
+              mapped = alias ? (countryToContinent as Record<string,string>)[alias] : (countryToContinent as Record<string,string>)[normalized] || (countryToContinent as Record<string,string>)[countryLower];
+            }
+
+            if (!mapped || mapped !== continentFilter) {
+              // Scarta se il paese non corrisponde al continente richiesto
+              if (process.env.NODE_ENV !== 'production') {
+                // eslint-disable-next-line no-console
+                console.debug('[LiveDestinations] geocode filtered out', { city, cityName, country, countryCode, mapped, continentFilter });
+              }
+              return null;
+            }
+          }
+
+          // country-specific filtering removed — continent select is authoritative, searchQuery can still be used for direct searches
 
           // immagine + descrizione localizzata
           let imageUrl = imageCache.get(cityName);
@@ -328,6 +539,19 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
             tasks.length = 0;
           }
         }
+
+        // Salva i risultati finali in cache solo se abbiamo destinazioni valide
+        setTimeout(() => {
+          setDestinations((currentDestinations) => {
+            if (currentDestinations.length > 0) {
+              const destinationsWithTimestamp = currentDestinations as any;
+              destinationsWithTimestamp.__timestamp = Date.now();
+              destinationsCache.set(cacheKey, destinationsWithTimestamp);
+            }
+            return currentDestinations;
+          });
+        }, 100);
+
       } catch (err) {
     setError('Impossibile caricare le destinazioni');
         logger.error('Error fetching destinations:', err);
@@ -340,7 +564,7 @@ export default function LiveDestinations({ searchQuery = '', maxItems, variant =
   // resetta le destinazioni prima del fetch
     setDestinations([]);
     fetchDestinations();
-  }, [searchQuery, seedParam]);
+  }, [searchQuery, seedParam, continent]);
 
   // Usa il nome della destinazione quando chiami add/remove così AppContext può risolvere all'id canonico del dataset
   const toggleFavorite = (destination: LiveDestination) => {

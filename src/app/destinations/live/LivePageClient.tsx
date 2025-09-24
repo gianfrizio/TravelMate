@@ -7,7 +7,8 @@ import { useWeather } from '@/hooks/useWeather';
 import { destinations } from '@/data/destinations';
 import Button from '@/components/ui/Button';
 import { useApp } from '@/context/AppContext';
-import { Heart } from 'lucide-react';
+import { Heart, ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function LivePageClient() {
   const params = useSearchParams();
@@ -16,13 +17,17 @@ export default function LivePageClient() {
   const lon = params.get('lon') ? Number(params.get('lon')) : undefined;
 
   const { weatherData, isLoading, error } = useWeather({ lat, lng: lon, location: name });
-  const { addToFavorites, removeFromFavorites, isFavorite } = useApp();
+  const { addToFavorites, removeFromFavorites, isFavorite, getLastSearch } = useApp();
+  const router = useRouter();
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const [localInfo, setLocalInfo] = useState<any | null>(null);
   const [longExtract, setLongExtract] = useState<string | null>(null);
   const [apiDescription, setApiDescription] = useState<string | null>(null);
   const [showMore, setShowMore] = useState(false);
+  const [imageTimeout, setImageTimeout] = useState<NodeJS.Timeout | null>(null);
         // Se un parametro immagine esplicito è presente nell'URL (dalla lista), preferiscilo.
   useEffect(() => {
   // Prova a trovare i dati della destinazione locale (confronto case-insensitive sul nome)
@@ -105,25 +110,128 @@ export default function LivePageClient() {
 
   const imageSrc = imageUrl || localInfo?.image || (localInfo?.images && localInfo.images[0]) || `https://source.unsplash.com/800x600/?${encodeURIComponent((name ? name + ' skyline city panorama' : 'city skyline') )}`;
 
+  // reset image loaded state when source changes
+  useEffect(() => {
+    setIsImageLoaded(false);
+    setImageError(false);
+    
+    // Clear existing timeout
+    if (imageTimeout) {
+      clearTimeout(imageTimeout);
+    }
+    
+    // Set timeout to force loading after 5 seconds
+    const timeout = setTimeout(() => {
+      if (!isImageLoaded) {
+        setIsImageLoaded(true);
+      }
+    }, 5000);
+    
+    setImageTimeout(timeout);
+    
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [imageSrc]);
+
+  const handleBackToSearch = () => {
+    // Prima prova con browser back navigation se possibile
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      // Controlla se possiamo usare la history del browser
+      try {
+        const currentUrl = window.location.href;
+        const referrer = document.referrer;
+        
+        // Se siamo arrivati da una pagina destinations, usa back()
+        if (referrer && (referrer.includes('/destinations') && !referrer.includes('/destinations/live'))) {
+          window.history.go(-1);
+          return;
+        }
+      } catch (e) {
+        // Se non funziona, continua con il fallback
+      }
+    }
+    
+    // Fallback: naviga con i parametri salvati senza ricaricare
+    const lastSearch = getLastSearch();
+    if (lastSearch && (lastSearch.query || lastSearch.continent)) {
+      const params = new URLSearchParams();
+      if (lastSearch.query) {
+        params.set('search', lastSearch.query);
+      }
+      if (lastSearch.continent) {
+        params.set('continent', lastSearch.continent);
+      }
+      // Indica che stiamo tornando dalla live page
+      params.set('from_live', '1');
+      
+      // Usa replace per non aggiungere alla history
+      router.replace(`/destinations?${params.toString()}`);
+    } else {
+      router.replace('/destinations');
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      {/* Pulsante torna alla ricerca */}
+      <div className="mb-6">
+        <Button
+          variant="outline"
+          onClick={handleBackToSearch}
+          className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 border-primary-200 hover:border-primary-300"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Torna alla ricerca
+        </Button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
           <h1 className="text-3xl font-bold mb-2">{localInfo?.name || name || 'Live destination'}</h1>
           <div className="text-gray-600 mb-4">{localInfo?.country}</div>
 
-          <div className="rounded-xl overflow-hidden mb-6 bg-gray-100 dark:bg-gray-800 h-64 shadow-md border border-gray-100 dark:border-gray-700">
+          <div className="relative rounded-xl overflow-hidden mb-6 bg-gray-100 dark:bg-gray-800 h-64 shadow-md border border-gray-100 dark:border-gray-700">
+            {isImageLoaded && !imageError ? (
               <Image
                 src={imageSrc}
                 alt={name ?? 'city image'}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-opacity duration-500"
                 fill
+                placeholder="empty"
+                loading="lazy"
                 sizes="(max-width: 1024px) 100vw, 800px"
-                onError={(e) => {
-                                  // next/image non espone direttamente l'HTMLImageElement sottostante; usa un fallback cambiando l'URL al CDN
-                  setImageUrl(`https://source.unsplash.com/800x600/?${encodeURIComponent(name || '')}`);
+                onLoad={() => {
+                  setIsImageLoaded(true);
+                  setImageError(false);
                 }}
+                onError={() => {
+                  setImageError(true);
+                  // Se l'immagine fallisce, prova con un'altra fonte
+                  const fallbackUrl = `https://images.unsplash.com/featured/?${encodeURIComponent(name || 'city')}`;
+                  if (imageSrc !== fallbackUrl && !imageError) {
+                    setImageUrl(fallbackUrl);
+                    setIsImageLoaded(false);
+                  }
+                }}
+                style={{ zIndex: 10 }}
               />
+            ) : (
+              <div className="absolute inset-0 z-50 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 dark:from-gray-700 dark:via-gray-800 dark:to-gray-700">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent dark:via-white/5 animate-shimmer transform translate-x-[-100%]" 
+                     style={{
+                       animation: 'shimmer 2s infinite linear',
+                       background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)'
+                     }} />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-full bg-white/30 dark:bg-gray-600/30 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-sm bg-white/50 dark:bg-gray-500/50 animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <p className="text-gray-700 dark:text-gray-300 mb-6">

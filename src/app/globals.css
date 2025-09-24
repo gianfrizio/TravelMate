@@ -230,6 +230,22 @@ html:not(.dark) .h-96 {
   opacity: 1 !important;
   visibility: visible !important;
 }
+
+/* NASCONDI PLACEHOLDER DI NEXT.JS */
+img[alt*="placeholder"],
+img[src*="data:"],
+img[src=""],
+svg[data-testid*="placeholder"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* NASCONDI ICONE DI FALLBACK NEXT.JS */
+.relative img + svg,
+.relative div + svg {
+  display: none !important;
+}
 /* FORZA IL BIANCO NEL TEMA CHIARO */
 html:not(.dark) #__next {
   background-color: #ffffff !important;
@@ -340,4 +356,18 @@ body {
   50% {
     opacity: .5;
   }
+}
+
+/* Shimmer animation for skeleton loaders */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite linear;
 }

@@ -18,10 +18,10 @@ const Footer = () => {
 
   const footerLinks = {
     'Destinazioni': [
-      { name: 'Europa', href: '/destinations?continent=Europe' },
-      { name: 'Asia', href: '/destinations?continent=Asia' },
-      { name: 'America', href: '/destinations?continent=America' },
-      { name: 'Africa', href: '/destinations?continent=Africa' },
+  { name: 'Europa', href: '/destinations?continent=Europe&focus=1' },
+  { name: 'Asia', href: '/destinations?continent=Asia&focus=1' },
+  { name: 'America', href: '/destinations?continent=America&focus=1' },
+  { name: 'Africa', href: '/destinations?continent=Africa&focus=1' },
     ],
     'Servizi': [
       { name: 'Pianifica Viaggio', href: '/plan' },
@@ -180,9 +180,22 @@ const Footer = () => {
               <Link href="/privacy" className="text-slate-400 hover:text-white transition-colors">
                 Privacy Policy
               </Link>
-              <Link href="/cookies" className="text-slate-400 hover:text-white transition-colors">
+              <Link href="/cookie" className="text-slate-400 hover:text-white transition-colors">
                 Cookie Policy
               </Link>
+              <button
+                onClick={() => {
+                  try {
+                    localStorage.removeItem('travelmate_cookies_accepted')
+                    localStorage.removeItem('travelmate_cookies_accepted:prefs')
+                    window.dispatchEvent(new Event('travelmate:cookie-revoke'))
+                    window.dispatchEvent(new CustomEvent('travelmate:toast', { detail: { message: 'Consenso revocato', type: 'success' } }))
+                  } catch (e) {}
+                }}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                Revoca consenso cookie
+              </button>
             </div>
           </div>
         </div>

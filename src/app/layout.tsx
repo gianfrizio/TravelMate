@@ -4,6 +4,8 @@ import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import CookieBanner from '@/components/CookieBanner'
+import Toast from '@/components/Toast'
 
 const inter = Inter({
   variable: "--font-inter",
@@ -107,7 +109,9 @@ export default function RootLayout({
             <main id="content" className="flex-grow" tabIndex={-1}>
               {children}
             </main>
+            <CookieBanner />
             <Footer />
+            <Toast />
           </div>
         </AppProvider>
       </body>
