@@ -130,10 +130,11 @@ export default function DestinationsClient() {
     }
   }, [tempSearchQuery, searchQuery, searchParams, pathname, router]);
 
-  const handleSearch = () => {
+  const handleSearch = (queryOverride?: string) => {
+    const searchTerm = queryOverride || tempSearchQuery.trim();
     const params = new URLSearchParams(searchParams?.toString() || '');
-    if (tempSearchQuery.trim()) {
-      params.set('search', tempSearchQuery.trim());
+    if (searchTerm) {
+      params.set('search', searchTerm);
       params.set('focus', '1');
     } else {
       params.delete('search');
@@ -142,8 +143,8 @@ export default function DestinationsClient() {
     // preserve continent if present in select
     
     // Salva lo stato della ricerca solo quando si fa effettivamente una ricerca
-    if (tempSearchQuery.trim()) {
-      setLastSearch(tempSearchQuery.trim(), continent || '');
+    if (searchTerm) {
+      setLastSearch(searchTerm, continent || '');
     }
     
     router.push(`${pathname}?${params.toString()}`);
@@ -178,8 +179,12 @@ export default function DestinationsClient() {
               <div className="relative flex-1">
                 <Suspense fallback={<div className="h-12" />}>
                   <LocationSearch
-                    initialQuery={tempSearchQuery}
-                    onSelect={(s) => setTempSearchQuery(s.name)}
+                    initialQuery={searchQuery}
+                    onSelect={(s) => {
+                      setTempSearchQuery(s.name);
+                      // Avvia automaticamente la ricerca quando viene selezionato un suggerimento
+                      handleSearch(s.name);
+                    }}
                     onQueryChange={(q) => setTempSearchQuery(q)}
                     onEnter={() => handleSearch()}
                   />
@@ -223,7 +228,7 @@ export default function DestinationsClient() {
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                onClick={handleSearch}
+                onClick={() => handleSearch()}
                 disabled={isLoading || !tempSearchQuery.trim()}
                 className="border-white text-white dark:text-white bg-transparent hover:bg-white/10"
               >
@@ -232,10 +237,24 @@ export default function DestinationsClient() {
             </div>
           </div>
           {searchQuery && (
-            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-between">
               <p className="text-sm text-blue-700 dark:text-blue-300">
                 Risultati per: <strong>{searchQuery}</strong>
               </p>
+              <button
+                onClick={() => {
+                  // Cancella la ricerca e torna al filtro generale
+                  setTempSearchQuery('');
+                  handleSearch('');
+                }}
+                className="ml-3 text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-200 transition-colors p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-800/30"
+                aria-label="Cancella ricerca"
+                title="Cancella ricerca"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           )}
         </motion.div>

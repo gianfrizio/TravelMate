@@ -6,6 +6,8 @@ export async function GET(request: NextRequest) {
   // lingua predefinita per i risultati di geocoding (preferisci l'italiano)
   const lang = request.nextUrl.searchParams.get('lang') || 'it';
 
+  console.log('[geocode] API called with query:', q);
+
   const GEO_KEY = process.env.GEOAPIFY_API_KEY;
   if (!GEO_KEY) {
     return NextResponse.json({ error: 'GEOAPIFY_API_KEY mancante' }, { status: 500 });

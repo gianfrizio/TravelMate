@@ -14,6 +14,7 @@ export default function LocationSearch({ onSelect, initialQuery, autoFocus, onQu
   const listRef = useRef<HTMLUListElement | null>(null);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const justSelectedRef = useRef(false);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -29,22 +30,36 @@ export default function LocationSearch({ onSelect, initialQuery, autoFocus, onQu
       return;
     }
 
+    // Non fare fetch se abbiamo appena selezionato un suggerimento
+    if (justSelectedRef.current) {
+      return;
+    }
+
     let aborted = false;
         const fetchSuggestions = async () => {
       setLoading(true);
       try {
         // Richiedi suggerimenti localizzati in italiano
-        	    const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}&limit=5&lang=it`);
+        console.log('[LocationSearch] Fetching suggestions for:', q);
+        const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}&limit=5&lang=it`);
         const data = await res.json();
-        if (!aborted) setSuggestions(data.suggestions || []);
+        console.log('[LocationSearch] API response:', data);
+        if (!aborted) {
+          setSuggestions(data.suggestions || []);
+          // Only show suggestions if we didn't just select one
+          if ((data.suggestions || []).length > 0 && !justSelectedRef.current) {
+            setShow(true);
+          }
+        }
       } catch (err) {
+        console.error('[LocationSearch] Error fetching suggestions:', err);
         if (!aborted) setSuggestions([]);
       } finally {
         if (!aborted) setLoading(false);
       }
     };
 
-    const t = setTimeout(fetchSuggestions, 250);
+    const t = setTimeout(fetchSuggestions, 1000);
     return () => {
       aborted = true;
       clearTimeout(t);
@@ -53,9 +68,8 @@ export default function LocationSearch({ onSelect, initialQuery, autoFocus, onQu
 
   // set initial query or focus when props change
   useEffect(() => {
-    if (typeof initialQuery === 'string') {
+    if (typeof initialQuery === 'string' && initialQuery !== q && !justSelectedRef.current) {
       setQ(initialQuery);
-      // If initialQuery comes from a continent link, do not open the suggestions list automatically.
       setShow(false);
     }
     if (autoFocus && inputRef.current) {
@@ -77,15 +91,19 @@ export default function LocationSearch({ onSelect, initialQuery, autoFocus, onQu
       e.preventDefault();
       if (activeIndex >= 0 && suggestions[activeIndex]) {
         const s = suggestions[activeIndex];
-        onSelect(s);
         setShow(false);
+        setSuggestions([]);
         setQ(s.name);
         if (typeof onQueryChange === 'function') onQueryChange(s.name);
+        onSelect(s);
         if (typeof onEnter === 'function') onEnter(s.name);
+        // Set flag after onSelect to prevent reopening suggestions
+        justSelectedRef.current = true;
+        setTimeout(() => { justSelectedRef.current = false; }, 500);
       } else {
         // No suggestion selected: notify parent of raw enter
-        if (typeof onEnter === 'function') onEnter(q);
         setShow(false);
+        if (typeof onEnter === 'function') onEnter(q);
       }
     } else if (e.key === 'Escape') {
       setShow(false);
@@ -106,6 +124,21 @@ export default function LocationSearch({ onSelect, initialQuery, autoFocus, onQu
           aria-expanded={show}
           aria-controls="location-suggestions"
           onKeyDown={onKeyDown}
+          onFocus={() => {
+            // Riapri i suggerimenti se ci sono e non abbiamo appena selezionato
+            if (suggestions.length > 0 && !justSelectedRef.current && q.length >= 2) {
+              setShow(true);
+            }
+          }}
+          onBlur={() => {
+            // Chiudi i suggerimenti quando l'input perde il focus
+            // Usa un timeout per permettere il click sui suggerimenti
+            setTimeout(() => {
+              if (!justSelectedRef.current) {
+                setShow(false);
+              }
+            }, 150);
+          }}
           className="w-full px-3 py-3 bg-transparent focus:outline-none text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
         />
         {loading && (
@@ -129,7 +162,16 @@ export default function LocationSearch({ onSelect, initialQuery, autoFocus, onQu
               key={s.id}
               role="option"
               aria-selected={activeIndex === index}
-              onClick={() => { onSelect(s); setShow(false); setQ(s.name); setActiveIndex(-1); }}
+              onClick={() => { 
+                setShow(false); 
+                setSuggestions([]);
+                setQ(s.name); 
+                setActiveIndex(-1); 
+                onSelect(s);
+                // Set flag after onSelect to prevent reopening suggestions
+                justSelectedRef.current = true;
+                setTimeout(() => { justSelectedRef.current = false; }, 500);
+              }}
               onMouseEnter={() => setActiveIndex(index)}
               className={`px-4 py-3 cursor-pointer transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 flex items-center space-x-2 ${
                 activeIndex === index ? 'bg-gray-100 dark:bg-gray-700' : 'hover:bg-gray-50 dark:hover:bg-gray-700'
