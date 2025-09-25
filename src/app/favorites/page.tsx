@@ -20,10 +20,18 @@ export default function FavoritesPage() {
   const router = useRouter();
   const { state, removeFromFavorites, removeFromItinerary } = useApp();
   const [activeTab, setActiveTab] = useState<'favorites' | 'itinerary'>('favorites');
-
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   // Stato per destinazioni dinamiche create
   const [dynamicDestinations, setDynamicDestinations] = useState<Record<string, Destination>>({});
+
+  // Funzione per rimuovere tutti i preferiti
+  const removeAllFavorites = () => {
+    resolvedFavorites.forEach((destination: Destination & { originalFavoriteId: string }) => {
+      removeFromFavorites(destination.originalFavoriteId);
+    });
+    setShowConfirmDialog(false);
+  };
 
   // Normalizza i preferiti provenienti dallo state: possono essere memorizzati come id, nomi o vecchie forme di oggetto.
   const normalizeKey = (raw: unknown) => {
@@ -227,13 +235,13 @@ export default function FavoritesPage() {
   };
 
   // Gestisce la risoluzione di preferiti sia statici che dinamici
-  const [resolvedFavorites, setResolvedFavorites] = useState<Destination[]>([]);
+  const [resolvedFavorites, setResolvedFavorites] = useState<(Destination & { originalFavoriteId: string })[]>([]);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(true);
 
   useEffect(() => {
     const resolveFavorites = async () => {
       setIsLoadingFavorites(true);
-      const resolved: Destination[] = [];
+      const resolved: (Destination & { originalFavoriteId: string })[] = [];
 
       for (const favorite of state.favorites) {
         let favoriteId: string;
@@ -272,7 +280,10 @@ export default function FavoritesPage() {
         }
 
         if (destination) {
-          resolved.push(destination);
+          resolved.push({
+            ...destination,
+            originalFavoriteId: favoriteId
+          });
         }
       }
 
@@ -351,29 +362,45 @@ export default function FavoritesPage() {
           className="mb-8"
         >
           <div className="border-b border-gray-200 dark:border-gray-700">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('favorites')}
-                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'favorites'
-                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-                }`}
-              >
-                <Heart className="w-5 h-5" />
-                <span>Preferiti ({resolvedFavorites.length})</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('itinerary')}
-                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'itinerary'
-                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-                }`}
-              >
-                <PlaneTakeoff className="w-5 h-5" />
-                <span>Itinerario ({state.itinerary.length})</span>
-              </button>
+            <nav className="-mb-px flex space-x-8 justify-between items-center">
+              <div className="flex space-x-8">
+                <button
+                  onClick={() => setActiveTab('favorites')}
+                  className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === 'favorites'
+                      ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                  }`}
+                >
+                  <Heart className="w-5 h-5" />
+                  <span>Preferiti ({resolvedFavorites.length})</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('itinerary')}
+                  className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === 'itinerary'
+                      ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                  }`}
+                >
+                  <PlaneTakeoff className="w-5 h-5" />
+                  <span>Itinerario ({state.itinerary.length})</span>
+                </button>
+              </div>
+              
+              {/* Pulsante rimuovi tutti preferiti */}
+              {activeTab === 'favorites' && resolvedFavorites.length > 0 && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  onClick={() => setShowConfirmDialog(true)}
+                  className="flex items-center space-x-2 px-4 py-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="text-sm font-medium">Rimuovi tutti</span>
+                </motion.button>
+              )}
             </nav>
           </div>
         </motion.div>
@@ -405,7 +432,7 @@ export default function FavoritesPage() {
                 <EmptyState type="favorites" />
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {resolvedFavorites.map((destination: Destination, index: number) => (
+                  {resolvedFavorites.map((destination: Destination & { originalFavoriteId: string }, index: number) => (
                     <motion.div
                       key={destination.id}
                       initial={{ opacity: 0, y: 60, rotateY: -15 }}
@@ -452,7 +479,7 @@ export default function FavoritesPage() {
                         <motion.button
                           onClick={(e) => {
                             e.stopPropagation();
-                            removeFromFavorites(destination.id);
+                            removeFromFavorites(destination.originalFavoriteId);
                           }}
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.95 }}
@@ -631,6 +658,58 @@ export default function FavoritesPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Modal di conferma per rimuovere tutti i preferiti */}
+      <AnimatePresence>
+        {showConfirmDialog && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowConfirmDialog(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", duration: 0.3 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl border border-gray-200 dark:border-gray-700"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 dark:bg-red-900/30 rounded-full">
+                <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+              
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white text-center mb-2">
+                Rimuovere tutti i preferiti?
+              </h3>
+              
+              <p className="text-gray-600 dark:text-gray-300 text-center mb-6">
+                Questa azione rimuoverà tutti i {resolvedFavorites.length} elementi dalla tua lista dei preferiti. 
+                L&apos;operazione non può essere annullata.
+              </p>
+              
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowConfirmDialog(false)}
+                >
+                  Annulla
+                </Button>
+                <Button
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                  onClick={removeAllFavorites}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Rimuovi tutti
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
