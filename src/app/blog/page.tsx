@@ -1,6 +1,6 @@
 import { Clock, User, Calendar, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { blogPosts } from '@/data/destinations';
+import { blogPosts } from '@/data/blog';
 import Button from '@/components/ui/Button';
 
 // Questo è un Server Component per il SSG

@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Clock, User, Calendar, Share2 } from 'lucide-react';
 import Link from 'next/link';
-import { blogPosts } from '@/data/destinations';
+import { blogPosts } from '@/data/blog';
 import Button from '@/components/ui/Button';
 import { Metadata } from 'next';
 
