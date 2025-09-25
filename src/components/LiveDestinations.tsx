@@ -129,11 +129,34 @@ const POPULAR_CITIES = [
   'Melbourne, Australia',
   'Perth, Australia',
   'Brisbane, Australia',
+  'Adelaide, Australia',
+  'Canberra, Australia',
+  'Gold Coast, Australia',
+  'Darwin, Australia',
   'Auckland, New Zealand',
   'Wellington, New Zealand',
+  'Christchurch, New Zealand',
+  'Queenstown, New Zealand',
+  'Suva, Fiji',
+  'Nadi, Fiji',
+  'Port Moresby, Papua New Guinea',
+  'Noumea, New Caledonia',
   'Cape Town, South Africa',
   'Johannesburg, South Africa',
   'Durban, South Africa',
+  'Cairo, Egypt',
+  'Marrakech, Morocco',
+  'Casablanca, Morocco',
+  'Lagos, Nigeria',
+  'Nairobi, Kenya',
+  'Addis Ababa, Ethiopia',
+  'Accra, Ghana',
+  'Tunis, Tunisia',
+  'Algiers, Algeria',
+  'Dakar, Senegal',
+  'Kigali, Rwanda',
+  'Lusaka, Zambia',
+  'Harare, Zimbabwe',
   'Rio de Janeiro, Brazil',
   'São Paulo, Brazil',
   'Brasília, Brazil',
@@ -157,6 +180,35 @@ const POPULAR_CITIES = [
   'Hamburg, Germany',
   'Lisbon, Portugal',
   'Porto, Portugal'
+];
+
+// When the UI requests 'all continents' show a curated list of globally-known major cities
+const MAJOR_GLOBAL_CITIES = [
+  'New York, USA',
+  'London, UK',
+  'Paris, France',
+  'Tokyo, Japan',
+  'Dubai, UAE',
+  'Singapore, Singapore',
+  'Barcelona, Spain',
+  'Rome, Italy',
+  'Bangkok, Thailand',
+  'Hong Kong, Hong Kong',
+  'Sydney, Australia',
+  'Los Angeles, USA',
+  'San Francisco, USA',
+  'Istanbul, Turkey',
+  'Rio de Janeiro, Brazil',
+  'Cape Town, South Africa',
+  'Cairo, Egypt',
+  'Marrakech, Morocco',
+  'Nairobi, Kenya',
+  'Melbourne, Australia',
+  'Auckland, New Zealand',
+  'Moscow, Russia',
+  'Toronto, Canada',
+  'Mexico City, Mexico',
+  'Seoul, South Korea'
 ];
 
 // Funzione per generare URL immagini affidabili
@@ -293,6 +345,18 @@ export default function LiveDestinations({ searchQuery = '', continent, maxItems
   };
 
   useEffect(() => {
+    // Precarica immagini per città più popolari per migliorare velocità
+    const preloadPopularImages = () => {
+      if (typeof window !== 'undefined') {
+        const popularCities = ['New York', 'London', 'Paris', 'Tokyo', 'Rome'];
+        popularCities.forEach((city, index) => {
+          const img = document.createElement('img');
+          img.src = getCityImage(city, index);
+        });
+      }
+    };
+    preloadPopularImages();
+
         const fetchDestinations = async () => {
       setLoading(true);
       onLoading?.(true);
@@ -335,7 +399,8 @@ export default function LiveDestinations({ searchQuery = '', continent, maxItems
         }
 
         const citiesSource = (() => {
-          if (!continentFilter) return POPULAR_CITIES;
+          // If no continent filter is provided, prefer showing a curated set of globally-known major cities
+          if (!continentFilter) return MAJOR_GLOBAL_CITIES;
           // Usa il dataset completo per mappare i paesi: filtra POPULAR_CITIES estraendo il paese e verificando il continente
           return POPULAR_CITIES.filter(c => {
             const parts = c.split(',');
@@ -377,25 +442,32 @@ export default function LiveDestinations({ searchQuery = '', continent, maxItems
           ? [searchQuery]
           : seededShuffle(citiesSource, seedParam).slice(0, maxItems || 12);
 
-  // Semplici cache in memoria per evitare ricerche ripetute durante la sessione
-        const geocodeCache: Map<string, any> = (globalThis as any).__GM_GEOCODE_CACHE || new Map();
+  // Cache in memoria con expiry per evitare ricerche ripetute (più persistente)
+        const geocodeCache: Map<string, { data: any; timestamp: number }> = (globalThis as any).__GM_GEOCODE_CACHE || new Map();
         (globalThis as any).__GM_GEOCODE_CACHE = geocodeCache;
 
-        const imageCache: Map<string, string> = (globalThis as any).__GM_IMAGE_CACHE || new Map();
+        const imageCache: Map<string, { url: string; timestamp: number }> = (globalThis as any).__GM_IMAGE_CACHE || new Map();
         (globalThis as any).__GM_IMAGE_CACHE = imageCache;
 
-  // Controllo di concorrenza: dimensione del batch
-        const BATCH_SIZE = 4;
+        // Cache timeout: 30 minuti per geocoding, 1 ora per immagini
+        const GEOCODE_CACHE_TTL = 30 * 60 * 1000;
+        const IMAGE_CACHE_TTL = 60 * 60 * 1000;
+
+        // Caricamento progressivo senza batch: ogni destinazione appare appena pronta
 
         const fetchForCity = async (city: string, index: number) => {
-          // geocoding
-          let geocode = geocodeCache.get(city);
-          if (!geocode) {
+          // geocoding con cache TTL
+          const cachedGeocode = geocodeCache.get(city);
+          let geocode: any;
+          
+          if (cachedGeocode && (Date.now() - cachedGeocode.timestamp) < GEOCODE_CACHE_TTL) {
+            geocode = cachedGeocode.data;
+          } else {
             try {
-              // Richiedi geocoding in italiano così il nome/country formattato saranno localizzati
+              // Richiedi geocoding senza timeout per permettere caricamento progressivo
               const response = await fetch(`/api/geocode?q=${encodeURIComponent(city)}&limit=1&lang=it`);
               geocode = await response.json();
-              geocodeCache.set(city, geocode);
+              geocodeCache.set(city, { data: geocode, timestamp: Date.now() });
             } catch (err) {
               logger.warn(`Failed to fetch geocode for ${city}:`, err);
               return null;
@@ -442,32 +514,41 @@ export default function LiveDestinations({ searchQuery = '', continent, maxItems
 
           // country-specific filtering removed — continent select is authoritative, searchQuery can still be used for direct searches
 
-          // immagine + descrizione localizzata
-          let imageUrl = imageCache.get(cityName);
+          // immagine + descrizione localizzata con cache TTL
+          const cachedImage = imageCache.get(cityName);
+          let imageUrl: string;
           let apiDescription: string | null = null;
-          if (!imageUrl) {
-            imageUrl = getCityImage(cityName, index) as string;
+          
+          if (cachedImage && (Date.now() - cachedImage.timestamp) < IMAGE_CACHE_TTL) {
+            imageUrl = cachedImage.url;
+          } else {
+            // Usa fallback immediato e prova API in background
+            imageUrl = getCityImage(cityName, index);
+            
             try {
+              // API immagini senza timeout per caricamento progressivo
               const imageResponse = await fetch(`/api/city-images?city=${encodeURIComponent(cityName)}`);
+              
               if (imageResponse.ok) {
                 const imageData = await imageResponse.json();
-                if (imageData.imageUrl) imageUrl = imageData.imageUrl;
-                else if (imageData.fallbackUrl) imageUrl = imageData.fallbackUrl;
+                if (imageData.imageUrl) {
+                  imageUrl = imageData.imageUrl;
+                } else if (imageData.fallbackUrl) {
+                  imageUrl = imageData.fallbackUrl;
+                }
 
                 // Preferisci descrizione/titolo in Italiano quando fornito dall'API
                 if (imageData.description) apiDescription = imageData.description;
                 else if (imageData.longExtract) apiDescription = imageData.longExtract;
                 else if (imageData.title && typeof imageData.title === 'string') {
-                  // a volte il sommario è breve — usalo come descrizione minima
                   apiDescription = String(imageData.title);
                 }
               }
             } catch (imgError) {
               logger.warn(`Impossibile ottenere l'immagine per ${cityName}:`, imgError);
             }
-            imageCache.set(cityName, String(imageUrl));
-          } else {
-            // Se l'immagine era già in cache, non è disponibile una `apiDescription` — lasciare null
+            
+            imageCache.set(cityName, { url: imageUrl, timestamp: Date.now() });
           }
 
           return {
@@ -486,59 +567,60 @@ export default function LiveDestinations({ searchQuery = '', continent, maxItems
           } as LiveDestination;
         };
 
-        const tasks: Promise<LiveDestination | null>[] = [];
-        for (let i = 0; i < citiesToFetch.length; i++) {
-          tasks.push(fetchForCity(citiesToFetch[i], i));
-          // Se raggiungi la dimensione del batch o la fine, attendi il completamento del batch
-          if (tasks.length >= BATCH_SIZE || i === citiesToFetch.length - 1) {
-            // esegui il batch in parallelo
-                // appenda i risultati non nulli e rimuovi i duplicati per id
-                const results = await Promise.all(tasks);
-                const valid = results.filter(Boolean) as LiveDestination[];
-                setDestinations((prev) => {
-                  const combined = prev.concat(valid);
-                  const seen = new Set<string>();
-                    // Deduplica per id, nome normalizzato o prossimità (entro ~1km)
-                    const seenNames = new Set<string>();
-                    const kept: LiveDestination[] = [];
-                    const isNearby = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-                      const toRad = (v: number) => (v * Math.PI) / 180;
-                      const R = 6371; // km
-                      const dLat = toRad(lat2 - lat1);
-                      const dLon = toRad(lon2 - lon1);
-                      const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
-                      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                      const d = R * c;
-                      return d <= 1.0; // entro 1 km
-                    };
+        // Caricamento progressivo: avvia tutte le richieste in parallelo e aggiorna UI man mano
+        const processedIds = new Set<string>();
+        const processedNames = new Set<string>();
+        
+        const isNearby = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+          const toRad = (v: number) => (v * Math.PI) / 180;
+          const R = 6371; // km
+          const dLat = toRad(lat2 - lat1);
+          const dLon = toRad(lon2 - lon1);
+          const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          const d = R * c;
+          return d <= 1.0; // entro 1 km
+        };
 
-                    const normalize = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+        const normalize = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
 
-                    for (const d of combined) {
-                      if (seen.has(d.id)) continue;
-                      const n = normalize(d.name || '');
-                      if (seenNames.has(n)) continue;
-                      // check prossimità
-                      let prox = false;
-                      for (const k of kept) {
-                        if (d.lat && d.lon && k.lat && k.lon && isNearby(d.lat, d.lon, k.lat, k.lon)) {
-                          prox = true;
-                          break;
-                        }
-                      }
-                      if (prox) continue;
+        // Avvia tutte le richieste e processa risultati appena disponibili
+        const allPromises = citiesToFetch.map(async (city, index) => {
+          try {
+            const destination = await fetchForCity(city, index);
+            if (!destination) return;
 
-                      seen.add(d.id);
-                      seenNames.add(n);
-                      kept.push(d);
-                    }
+            // Controllo duplicati in tempo reale
+            if (processedIds.has(destination.id)) return;
+            
+            const normalizedName = normalize(destination.name || '');
+            if (processedNames.has(normalizedName)) return;
 
-                    return kept;
-                });
-            // pulisce le task
-            tasks.length = 0;
+            // Controlla prossimità con destinazioni già aggiunte
+            let tooClose = false;
+            setDestinations(currentDestinations => {
+              for (const existing of currentDestinations) {
+                if (destination.lat && destination.lon && existing.lat && existing.lon && 
+                    isNearby(destination.lat, destination.lon, existing.lat, existing.lon)) {
+                  tooClose = true;
+                  break;
+                }
+              }
+              
+              if (!tooClose) {
+                processedIds.add(destination.id);
+                processedNames.add(normalizedName);
+                return [...currentDestinations, destination];
+              }
+              return currentDestinations;
+            });
+          } catch (error) {
+            logger.warn(`Error processing city ${city}:`, error);
           }
-        }
+        });
+
+        // Aspetta che tutte le richieste siano completate per segnalare fine caricamento
+        await Promise.allSettled(allPromises);
 
         // Salva i risultati finali in cache solo se abbiamo destinazioni valide
         setTimeout(() => {
@@ -656,26 +738,9 @@ export default function LiveDestinations({ searchQuery = '', continent, maxItems
               {/* Badge valutazione */}
               <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 flex items-center space-x-1">
                 <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                <span className="text-sm font-medium">{destination.rating}</span>
+                <span className="text-sm font-medium text-black">{destination.rating}</span>
               </div>
 
-              {/* Badge budget */}
-              <div className="absolute bottom-4 left-4">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium text-white ${
-                  destination.budget === 'low' ? 'bg-green-500' :
-                  destination.budget === 'medium' ? 'bg-yellow-500' : 'bg-red-500'
-                }`}>
-                  {destination.budget === 'low' ? 'Economico' :
-                   destination.budget === 'medium' ? 'Medio' : 'Alto'}
-                </span>
-              </div>
-
-              {/* Badge dati live */}
-              <div className="absolute top-4 right-16">
-                <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-500/90 backdrop-blur-sm text-white border border-green-400/50">
-                  🟢 Live
-                </span>
-              </div>
             </div>
             
             <div className={`p-6 ${variant === 'hero' ? 'bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm' : 'bg-white dark:bg-gray-800'}`}>

@@ -263,12 +263,10 @@ export default function LivePageClient() {
 
         <aside className="space-y-3">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-100 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-center">
+              <div className="w-full flex items-center justify-center">
                 {/* azione preferiti */}
-              </div>
-              <div>
-                  <Button size="sm" className="px-2 py-1 text-sm flex items-center gap-2" onClick={() => {
+                <Button size="sm" className="px-2 py-1 text-sm flex items-center gap-2" onClick={() => {
                     // Risolvi l'id canonico se abbiamo un dataset locale
                     const resolvedId = localInfo?.id || (destinations.find(d => d.name.toLowerCase() === (name || '').toLowerCase())?.id) || name;
                     if (isFavorite(resolvedId)) {
@@ -279,13 +277,13 @@ export default function LivePageClient() {
                   }}>
                     {isFavorite(localInfo?.id || name) ? (
                       <>
-                        <Heart className="w-4 h-4 text-red-500" />
-                        <span>In Preferiti</span>
+                        <Heart className="w-6 h-6 text-red-500" />
+                        <span className="text-sm font-medium">In Preferiti</span>
                       </>
                     ) : (
                       <>
-                        <Heart className="w-4 h-4" />
-                        <span>Aggiungi ai preferiti</span>
+                        <Heart className="w-6 h-6" />
+                        <span className="text-sm font-medium">Aggiungi ai preferiti</span>
                       </>
                     )}
                   </Button>
@@ -294,11 +292,11 @@ export default function LivePageClient() {
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-100 dark:border-gray-700">
-            <h3 className="font-semibold mb-2">Meteo</h3>
-            {isLoading && <div>Caricamento...</div>}
-            {error && <div className="text-red-500">{error}</div>}
+            <h3 className="font-semibold mb-2 text-center">Meteo</h3>
+            {isLoading && <div className="text-center">Caricamento...</div>}
+            {error && <div className="text-red-500 text-center">{error}</div>}
             {weatherData && (
-              <div>
+              <div className="flex flex-col items-center justify-center text-center space-y-1">
                 <div className="text-4xl">{weatherData.icon}</div>
                 <div className="text-2xl font-bold">{weatherData.temperature}°C</div>
                 <div className="text-sm text-gray-500">{weatherData.condition}</div>

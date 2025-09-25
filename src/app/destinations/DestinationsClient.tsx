@@ -13,15 +13,34 @@ export default function DestinationsClient() {
   const [showFilters, setShowFilters] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [continent, setContinent] = useState<string | null>(null);
   const { setLastSearch, getLastSearch } = useApp();
-  // Inizializza con l'ultimo stato di ricerca salvato se disponibile
+  
+  // Usa i parametri URL come single source of truth
+  const searchQuery = searchParams?.get('search') || '';
+  const continent = searchParams?.get('continent') || null;
+  
+  // Debug dei parametri URL
+  console.log('DestinationsClient URL params:', { 
+    allParams: searchParams?.toString(),
+    searchQuery, 
+    continent,
+    continentRaw: searchParams?.get('continent'),
+    cleared: searchParams?.get('_cleared')
+  });
+  
+  // State temporaneo per la ricerca (solo durante la digitazione)
+  const [tempSearchQuery, setTempSearchQuery] = useState(searchQuery);
+  
+  // Sincronizza tempSearchQuery quando searchQuery cambia (da URL)
   useEffect(() => {
-    const lastSearch = getLastSearch();
-    const urlSearch = searchParams?.get('search') || '';
-    const urlContinent = searchParams?.get('continent') || null;
+    setTempSearchQuery(searchQuery);
+  }, [searchQuery]);
+
+
+  // Gestisce la pulizia dei parametri speciali (solo al cambio di searchParams)
+  useEffect(() => {
     const fromLive = searchParams?.get('from_live') === '1';
+    const cleared = searchParams?.get('_cleared') === '1';
     
     // Se stiamo tornando dalla live page, pulisci il parametro dall'URL
     if (fromLive) {
@@ -29,14 +48,27 @@ export default function DestinationsClient() {
       cleanParams.delete('from_live');
       const cleanUrl = cleanParams.toString();
       router.replace(`/destinations${cleanUrl ? `?${cleanUrl}` : ''}`);
+      return;
     }
     
-    // Se non ci sono parametri URL ma c'è uno stato salvato, usa quello
-    if (!urlSearch && !urlContinent && lastSearch && !fromLive) {
-      setSearchQuery(lastSearch.query);
-      setContinent(lastSearch.continent || null);
-      
-      // Opzionalmente aggiorna l'URL per riflettere lo stato ripristinato
+    // Se c'è il flag _cleared, rimuovilo e NON fare altro
+    if (cleared) {
+      const cleanParams = new URLSearchParams(searchParams?.toString());
+      cleanParams.delete('_cleared');
+      const cleanUrl = cleanParams.toString();
+      router.replace(`/destinations${cleanUrl ? `?${cleanUrl}` : ''}`);
+      return;
+    }
+  }, [searchParams, router]);
+
+  // Gestisce il ripristino dello stato (solo al montaggio iniziale)
+  useEffect(() => {
+    const lastSearch = getLastSearch();
+    const fromLive = searchParams?.get('from_live') === '1';
+    const cleared = searchParams?.get('_cleared') === '1';
+    
+    // Solo se non ci sono parametri URL e non ci sono flag speciali, prova a ripristinare
+    if (!searchQuery && !continent && !fromLive && !cleared && lastSearch) {
       const params = new URLSearchParams();
       if (lastSearch.query) {
         params.set('search', lastSearch.query);
@@ -47,24 +79,25 @@ export default function DestinationsClient() {
       if (params.toString()) {
         router.replace(`/destinations?${params.toString()}`);
       }
-    } else {
-      // Usa i parametri URL come prima
-      const focusFlag = searchParams?.get('focus') === '1';
-      if (urlContinent) {
-        setSearchQuery('');
-      } else {
-        setSearchQuery(urlSearch);
-      }
-      setContinent(urlContinent);
-      
-      if (process.env.NODE_ENV !== 'production') {
-        // eslint-disable-next-line no-console
-        console.debug('[DestinationsClient] searchParams', { raw: searchParams?.toString(), search: urlSearch, continent: urlContinent, focus: focusFlag, fromLive });
-      }
     }
-  }, [searchParams, getLastSearch, router]);
+  }, []); // Esegui solo al montaggio iniziale
 
-  // Salva lo stato automaticamente quando la pagina cambia
+  // Salva lo stato corrente quando cambiano i parametri validi
+  useEffect(() => {
+    const cleared = searchParams?.get('_cleared') === '1';
+    const fromLive = searchParams?.get('from_live') === '1';
+    
+    if (!cleared && !fromLive && (searchQuery || continent)) {
+      setLastSearch(searchQuery, continent || '');
+    }
+    
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.debug('[DestinationsClient] searchParams', { raw: searchParams?.toString(), search: searchQuery, continent, cleared, fromLive });
+    }
+  }, [searchQuery, continent, searchParams, setLastSearch]);
+
+  // Salva lo stato solo quando si naviga via o si chiude la pagina
   useEffect(() => {
     const saveStateOnUnload = () => {
       if (searchQuery || continent) {
@@ -72,23 +105,35 @@ export default function DestinationsClient() {
       }
     };
 
-    // Salva quando si naviga via o si chiude la pagina
+    // Salva solo quando si naviga via o si chiude la pagina (non su ogni cambio di state)
     window.addEventListener('beforeunload', saveStateOnUnload);
     
     return () => {
-      window.removeEventListener('beforeunload', saveStateOnUnload); 
-      // Salva anche quando il componente si unmonta
-      saveStateOnUnload();
+      window.removeEventListener('beforeunload', saveStateOnUnload);
     };
-  }, [searchQuery, continent, setLastSearch]);
+  }, []); // Rimosso le dipendenze per evitare re-render continui
+  
   const [isLoading, setIsLoading] = useState(false);
   const pathname = usePathname();
   const [countryFilter, setCountryFilter] = useState<string | null>(null);
 
+  // Auto-aggiorna URL quando tempSearchQuery viene cancellato
+  useEffect(() => {
+    // Se l'utente ha cancellato tutto il testo e c'era una ricerca attiva, aggiorna l'URL
+    if (tempSearchQuery.trim() === '' && searchQuery.trim() !== '') {
+      const params = new URLSearchParams(searchParams?.toString() || '');
+      params.delete('search');
+      params.delete('focus');
+      
+      const newUrl = `${pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+      router.replace(newUrl);
+    }
+  }, [tempSearchQuery, searchQuery, searchParams, pathname, router]);
+
   const handleSearch = () => {
     const params = new URLSearchParams(searchParams?.toString() || '');
-    if (searchQuery) {
-      params.set('search', searchQuery);
+    if (tempSearchQuery.trim()) {
+      params.set('search', tempSearchQuery.trim());
       params.set('focus', '1');
     } else {
       params.delete('search');
@@ -96,8 +141,10 @@ export default function DestinationsClient() {
     }
     // preserve continent if present in select
     
-    // Salva lo stato corrente della ricerca
-    setLastSearch(searchQuery, continent || '');
+    // Salva lo stato della ricerca solo quando si fa effettivamente una ricerca
+    if (tempSearchQuery.trim()) {
+      setLastSearch(tempSearchQuery.trim(), continent || '');
+    }
     
     router.push(`${pathname}?${params.toString()}`);
   };
@@ -131,9 +178,9 @@ export default function DestinationsClient() {
               <div className="relative flex-1">
                 <Suspense fallback={<div className="h-12" />}>
                   <LocationSearch
-                    initialQuery={searchQuery}
-                    onSelect={(s) => setSearchQuery(s.name)}
-                    onQueryChange={(q) => setSearchQuery(q)}
+                    initialQuery={tempSearchQuery}
+                    onSelect={(s) => setTempSearchQuery(s.name)}
+                    onQueryChange={(q) => setTempSearchQuery(q)}
                     onEnter={() => handleSearch()}
                   />
                 </Suspense>
@@ -146,18 +193,22 @@ export default function DestinationsClient() {
                   onChange={(e) => {
                     const v = e.target.value;
                     const params = new URLSearchParams(searchParams?.toString() || '');
+                    
                     if (v) {
                       params.set('continent', v);
                       params.set('focus', '1');
                     } else {
                       params.delete('continent');
                       params.delete('focus');
+                      // Aggiungi un flag temporaneo per indicare che l'utente ha rimosso esplicitamente il filtro
+                      params.set('_cleared', '1');
                     }
                     
-                    // Salva lo stato quando cambia il continente
-                    setLastSearch(searchQuery, v);
+                    // Salva lo stato quando cambia il continente (usa '' per indicare "nessun continente")
+                    setLastSearch(searchQuery, v || '');
                     
-                    router.push(`${pathname}?${params.toString()}`);
+                    const newUrl = `${pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+                    router.replace(newUrl);
                   }}
                   className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2"
                 >
@@ -173,7 +224,7 @@ export default function DestinationsClient() {
               <Button
                 variant="outline"
                 onClick={handleSearch}
-                disabled={isLoading || !searchQuery}
+                disabled={isLoading || !tempSearchQuery.trim()}
                 className="border-white text-white dark:text-white bg-transparent hover:bg-white/10"
               >
                 Cerca

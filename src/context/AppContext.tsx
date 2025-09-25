@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useReducer, useEffect, useRef, ReactNode } from 'react';
 import { Destination, User, ItineraryItem } from '@/types';
 import { destinations } from '@/data/destinations';
 
@@ -94,6 +94,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const lastSearchRef = useRef<{ query: string; continent: string } | null>(null);
 
   // Carica da localStorage al montaggio
   useEffect(() => {
@@ -292,13 +293,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const setLastSearch = (query: string, continent: string) => {
+    // Previeni dispatch duplicati consecutivi controllando se i valori sono cambiati
+    const current = lastSearchRef.current;
+    if (current && current.query === query && current.continent === continent) {
+      return; // Nessun cambiamento, evita dispatch inutile
+    }
+    
+    // Aggiorna il riferimento con i nuovi valori
+    lastSearchRef.current = { query, continent };
+    
+    // Dispatch immediato per migliore responsività
     dispatch({ type: 'SET_LAST_SEARCH', payload: { query, continent } });
-    // Salva anche su sessionStorage per persistenza temporanea
-    sessionStorage.setItem('travelmate-last-search', JSON.stringify({
-      query,
-      continent,
-      timestamp: Date.now()
-    }));
+    
+    // Salva su sessionStorage
+    try {
+      sessionStorage.setItem('travelmate-last-search', JSON.stringify({
+        query,
+        continent,
+        timestamp: Date.now()
+      }));
+    } catch (e) {
+      // Ignora errori di sessionStorage
+    }
   };
 
   const getLastSearch = () => {
@@ -333,6 +349,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return null;
   };
+
+  // Inizializza il riferimento quando il state viene caricato
+  useEffect(() => {
+    if (state.lastSearchState) {
+      lastSearchRef.current = {
+        query: state.lastSearchState.query,
+        continent: state.lastSearchState.continent
+      };
+    }
+  }, [state.lastSearchState]);
 
   const value: AppContextType = {
     state,
