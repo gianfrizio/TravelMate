@@ -150,8 +150,8 @@ export async function GET(request: NextRequest) {
       paris: ['Eiffel Tower', 'Louvre', 'Notre-Dame', 'Montmartre'],
       londra: ['Big Ben', 'Tower Bridge', 'London Eye', 'Buckingham Palace'],
       london: ['Big Ben', 'Tower Bridge', 'London Eye', 'Buckingham Palace'],
-      firenze: ['Duomo', 'Cathedral of Santa Maria del Fiore', 'Ponte Vecchio', 'Piazza della Signoria'],
-      florence: ['Duomo', 'Ponte Vecchio', 'Uffizi', 'Piazza della Signoria'],
+      firenze: ['Duomo di Firenze', 'Cathedral of Santa Maria del Fiore', 'Ponte Vecchio', 'Piazza della Signoria', 'Cupola del Brunelleschi'],
+      florence: ['Duomo di Firenze', 'Florence Cathedral', 'Ponte Vecchio', 'Uffizi', 'Piazza della Signoria', 'Brunelleschi Dome'],
       venezia: ['Piazza San Marco', 'St Mark', 'Grand Canal', 'Ponte di Rialto'],
       venice: ['St Mark', 'Piazza San Marco', 'Rialto Bridge', 'Grand Canal'],
       milano: ['Duomo di Milano', 'Duomo', 'Galleria Vittorio Emanuele II', 'Castello Sforzesco'],
@@ -163,6 +163,18 @@ export async function GET(request: NextRequest) {
       amsterdam: ['Canals of Amsterdam', 'Rijksmuseum', 'Anne Frank House'],
       lisbona: ['Torre di Belem', 'Ponte 25 de Abril', 'Alfama'],
       lisbon: ['Belem Tower', '25 de Abril Bridge', 'Alfama'],
+      'rio de janeiro': ['Cristo Redentor', 'Christ the Redeemer', 'Sugarloaf Mountain', 'Copacabana', 'Ipanema'],
+      rio: ['Cristo Redentor', 'Christ the Redeemer', 'Sugarloaf Mountain', 'Copacabana', 'Ipanema'],
+      kyoto: ['Fushimi Inari', 'Golden Pavilion', 'Kinkaku-ji', 'Bamboo Grove', 'Gion District'],
+      'hong kong': ['Victoria Peak', 'Victoria Harbour', 'Hong Kong skyline', 'Central District', 'Symphony of Lights', 'Star Ferry', 'Tsim Sha Tsui', 'IFC Tower'],
+      'gold coast': ['Surfers Paradise', 'SkyPoint', 'Gold Coast skyline', 'Q1 Tower'],
+      atene: ['Acropoli', 'Partenone', 'Acropolis', 'Parthenon', 'Plaka'],
+      athens: ['Acropolis', 'Parthenon', 'Plaka', 'Temple of Zeus'],
+      assisi: ['Basilica di San Francesco', 'Basilica of Saint Francis', 'Rocca Maggiore'],
+      ravenna: ['Basilica di San Vitale', 'Mausoleo di Galla Placidia', 'Basilica di Sant Apollinare'],
+      maldive: ['resort', 'bungalow', 'lagoon', 'coral', 'atoll', 'beach resort'],
+      maldives: ['resort', 'bungalow', 'lagoon', 'coral', 'atoll', 'beach resort'],
+      zermatt: ['Matterhorn', 'Gornergrat', 'Klein Matterhorn', 'village', 'alpine village', 'mountain village'],
     };
 
     const normalize = (s = '') => String(s).toLowerCase();
@@ -274,11 +286,67 @@ export async function GET(request: NextRequest) {
           const loc = String(photo?.location?.title || '').toLowerCase();
           const tags = (photo?.tags || []).map((t: any) => String(t.title || '').toLowerCase());
 
-          // Blacklist lato server: filtra soggetti evidentemente irrilevanti (uccelli, animali, primi piani)
-          const blacklisted = ['gull', 'seagull', 'bird', 'dog', 'cat', 'puppy', 'portrait', 'face', 'selfie', 'person', 'people', 'gabbiano', 'gabbiani', 'uccello', 'uccelli', 'persona', 'persone'];
+          // Blacklist lato server: filtra soggetti evidentemente irrilevanti 
+          const blacklisted = [
+            // Animali e natura non urbana
+            'gull', 'seagull', 'bird', 'dog', 'cat', 'puppy', 'pet', 'animal', 'wildlife', 'fish', 'butterfly', 'insect',
+            'gabbiano', 'gabbiani', 'uccello', 'uccelli', 'cane', 'gatto', 'animale', 'farfalla', 'insetto',
+            // Persone e ritratti
+            'portrait', 'face', 'selfie', 'person', 'people', 'man', 'woman', 'child', 'baby', 'crowd', 'tourist',
+            'persona', 'persone', 'uomo', 'donna', 'bambino', 'bambina', 'folla', 'turista', 'ritratto', 'viso',
+            // Cibo e oggetti
+            'food', 'meal', 'dish', 'plate', 'restaurant', 'cafe', 'bar', 'drink', 'coffee', 'wine', 'beer',
+            'cibo', 'piatto', 'ristorante', 'caffe', 'vino', 'birra', 'bevanda', 'pranzo', 'cena',
+            // Interni e oggetti
+            'interior', 'room', 'bedroom', 'kitchen', 'bathroom', 'furniture', 'chair', 'table', 'bed',
+            'interno', 'stanza', 'camera', 'cucina', 'bagno', 'mobile', 'sedia', 'tavolo', 'letto',
+            // Oggetti vari
+            'car', 'vehicle', 'bike', 'motorcycle', 'train', 'plane', 'boat', 'ship', 'close-up', 'macro',
+            'auto', 'macchina', 'bicicletta', 'moto', 'treno', 'aereo', 'barca', 'nave', 'primo piano',
+            // Natura non urbana
+            'flower', 'tree', 'forest', 'mountain', 'beach', 'ocean', 'sea', 'lake', 'river', 'sunset', 'sunrise',
+            'fiore', 'albero', 'bosco', 'montagna', 'spiaggia', 'oceano', 'mare', 'lago', 'fiume', 'tramonto', 'alba',
+            // Oggetti di consumo
+            'shopping', 'shop', 'store', 'market', 'vendor', 'product', 'souvenir', 'gift',
+            'negozio', 'mercato', 'venditore', 'prodotto', 'souvenir', 'regalo',
+            // Abbigliamento e accessori
+            'shoes', 'shoe', 'sneakers', 'boots', 'clothing', 'clothes', 'fashion', 'outfit',
+            'scarpe', 'scarpa', 'sneaker', 'stivali', 'abbigliamento', 'vestiti', 'moda'
+          ];
+          
+          // Blacklist specifica per città che vengono spesso confuse
+          const citySpecificBlacklist: {[key: string]: string[]} = {
+            'firenze': ['milan', 'milano', 'duomo di milano', 'cathedral of milan'],
+            'florence': ['milan', 'milano', 'duomo di milano', 'cathedral of milan'],
+            'milano': ['firenze', 'florence', 'duomo di firenze', 'florence cathedral'],
+            'milan': ['firenze', 'florence', 'duomo di firenze', 'florence cathedral'],
+            'rio de janeiro': ['rio grande', 'rio negro', 'amazon', 'jungle', 'carnival mask', 'samba dancer'],
+            'rio': ['rio grande', 'rio negro', 'amazon', 'jungle', 'carnival mask', 'samba dancer'],
+            'kyoto': ['tokyo', 'osaka', 'mount fuji', 'tokyo tower', 'shibuya'],
+            'hong kong': ['singapore', 'shanghai', 'beijing', 'taipei', 'macau', 'shoes', 'shoe', 'sneakers', 'shopping', 'fashion', 'store', 'market'],
+            'gold coast': ['sydney', 'melbourne', 'brisbane', 'perth', 'cairns'],
+            'atene': ['santorini', 'mykonos', 'thessaloniki', 'crete', 'rhodes'],
+            'athens': ['santorini', 'mykonos', 'thessaloniki', 'crete', 'rhodes'],
+            'assisi': ['rome', 'florence', 'siena', 'pisa', 'vatican'],
+            'ravenna': ['venice', 'bologna', 'florence', 'rome', 'milan'],
+            'maldive': ['satellite', 'aerial view', 'bird view', 'overhead', 'from above', 'satellitare', 'vista aerea'],
+            'maldives': ['satellite', 'aerial view', 'bird view', 'overhead', 'from above'],
+            'zermatt': ['leaves', 'leaf', 'foglie', 'foglia', 'close-up', 'closeup', 'detail', 'macro']
+          };
+
           let isBlacklisted = false;
           try {
+            // Blacklist generale
             for (const b of blacklisted) {
+              if (alt.includes(b) || desc.includes(b) || loc.includes(b) || tags.some((t: string) => t.includes(b))) {
+                isBlacklisted = true;
+                break;
+              }
+            }
+            
+            // Blacklist specifica per città
+            const cityBlacklist = citySpecificBlacklist[cityLower] || [];
+            for (const b of cityBlacklist) {
               if (alt.includes(b) || desc.includes(b) || loc.includes(b) || tags.some((t: string) => t.includes(b))) {
                 isBlacklisted = true;
                 break;
@@ -293,14 +361,25 @@ export async function GET(request: NextRequest) {
           }
 
           // Corrispondenze città/landmark
-          if (alt.includes(cityLower) || desc.includes(cityLower)) score += 30;
-          if (loc && loc.includes(cityLower)) score += 40;
+          if (alt.includes(cityLower) || desc.includes(cityLower)) score += 50;
+          if (loc && loc.includes(cityLower)) score += 60;
+          
+          // Boost significativo per termini che indicano paesaggi urbani/architettura
+          const urbanKeywords = ['skyline', 'cityscape', 'architecture', 'building', 'buildings', 'downtown', 'center', 'centre', 'plaza', 'square', 'street', 'avenue', 'bridge', 'tower', 'cathedral', 'church', 'palace', 'castle', 'monument', 'landmark', 'panorama', 'view', 'aerial', 'harbor', 'port'];
+          const urbanKeywordsIt = ['skyline', 'panorama', 'architettura', 'edificio', 'edifici', 'centro', 'piazza', 'via', 'ponte', 'torre', 'cattedrale', 'chiesa', 'palazzo', 'castello', 'monumento', 'vista', 'aereo', 'porto'];
+          
+          for (const uk of [...urbanKeywords, ...urbanKeywordsIt]) {
+            if (alt.includes(uk) || desc.includes(uk)) score += 40;
+            if (loc && loc.includes(uk)) score += 50;
+            if (tags.some((t: string) => t.includes(uk))) score += 35;
+          }
+          
           for (const t of tags) {
-            if (t.includes(cityLower)) score += 25;
-            for (const ct of cityTags) if (t.includes(ct)) score += 6;
+            if (t.includes(cityLower)) score += 30;
+            for (const ct of cityTags) if (t.includes(ct)) score += 10;
           }
           for (const ct of cityTags) {
-            if (alt.includes(ct) || desc.includes(ct)) score += 5;
+            if (alt.includes(ct) || desc.includes(ct)) score += 8;
           }
 
           // Forte boost quando le parole chiave dei landmark compaiono in alt/desc/loc/tags
@@ -309,6 +388,25 @@ export async function GET(request: NextRequest) {
             if (alt.includes(lk) || desc.includes(lk)) score += 80;
             if (loc.includes(lk)) score += 100;
             if (tags.some((t: string) => t.includes(lk))) score += 60;
+          }
+          
+          // Penalizza fortemente le immagini che sembrano non essere paesaggi urbani/monumenti
+          const inappropriatePatterns = [
+            // Primi piani e dettagli
+            'close-up', 'closeup', 'detail', 'macro', 'zoom', 'leaves', 'leaf', 'foglie', 'foglia',
+            // Oggetti singoli
+            'single', 'isolated', 'white background', 'studio shot',
+            // Natura non urbana
+            'forest', 'jungle', 'wilderness', 'rural', 'countryside', 'farm',
+            // Interni
+            'indoor', 'inside', 'interior',
+            // Viste aeree/satellitari inappropriate
+            'satellite', 'aerial view', 'bird view', 'overhead', 'from above', 'satellitare', 'vista aerea'
+          ];
+          
+          for (const pattern of inappropriatePatterns) {
+            if (alt.includes(pattern) || desc.includes(pattern)) score -= 30;
+            if (tags.some((t: string) => t.includes(pattern))) score -= 25;
           }
 
           // piccolo incremento per maggior numero di like/popolarità
