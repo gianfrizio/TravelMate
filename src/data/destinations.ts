@@ -100,7 +100,7 @@ export const destinations: Destination[] = [
       'https://images.unsplash.com/photo-1570197788417-0e82375c9371?w=800&h=600&fit=crop'
     ],
     budget: 'medium',
-    type: 'mountain',
+    type: 'culture',
     rating: 4.7,
     coordinates: { lat: -13.1631, lng: -72.5450 },
     bestTimeToVisit: ['Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre'],
@@ -234,7 +234,7 @@ export const destinations: Destination[] = [
       'https://images.unsplash.com/photo-1539367628448-4bc5c9ddb2ff?w=800&h=600&fit=crop'
     ],
     budget: 'low',
-    type: 'beach',
+    type: 'nature',
     rating: 4.5,
     coordinates: { lat: -8.3405, lng: 115.0920 },
     bestTimeToVisit: ['Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre'],
@@ -261,6 +261,262 @@ export const destinations: Destination[] = [
         icon: '🏄',
         duration: '3 ore',
         price: 40
+      }
+    ]
+  },
+  {
+    id: '7',
+    name: 'Atene',
+    country: 'Grecia',
+    continent: 'Europe',
+    description: 'Culla della civiltà occidentale con monumenti antichi straordinari.',
+    image: 'https://images.unsplash.com/photo-1555993539-1732b0258c5e?w=800&h=600&fit=crop',
+    images: [
+      'https://images.unsplash.com/photo-1555993539-1732b0258c5e?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1539650116574-75c0c6d73c6e?w=800&h=600&fit=crop'
+    ],
+    budget: 'medium',
+    type: 'culture',
+    rating: 4.4,
+    coordinates: { lat: 37.9755, lng: 23.7348 },
+    bestTimeToVisit: ['Aprile', 'Maggio', 'Settembre', 'Ottobre'],
+    duration: '3-5 giorni',
+    activities: [
+      {
+        id: '7-1',
+        name: 'Acropoli',
+        description: 'Visita il Partenone e i templi antichi',
+        icon: '🏛️',
+        duration: '3 ore',
+        price: 20
+      },
+      {
+        id: '7-2',
+        name: 'Museo Archeologico',
+        description: 'Scopri i tesori dell\'antica Grecia',
+        icon: '🏺',
+        duration: '2 ore',
+        price: 12
+      }
+    ]
+  },
+  {
+    id: '8',
+    name: 'Foresta Amazzonica',
+    country: 'Brasile',
+    continent: 'South America',
+    description: 'Il polmone verde del mondo con biodiversità incredibile.',
+    image: 'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?w=800&h=600&fit=crop',
+    images: [
+      'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&h=600&fit=crop'
+    ],
+    budget: 'medium',
+    type: 'nature',
+    rating: 4.8,
+    coordinates: { lat: -3.4653, lng: -62.2159 },
+    bestTimeToVisit: ['Giugno', 'Luglio', 'Agosto', 'Settembre'],
+    duration: '5-8 giorni',
+    activities: [
+      {
+        id: '8-1',
+        name: 'Safari fotografico',
+        description: 'Avvista animali selvatici unici',
+        icon: '📸',
+        duration: '6 ore',
+        price: 120
+      },
+      {
+        id: '8-2',
+        name: 'Canoa nel Rio delle Amazzoni',
+        description: 'Naviga nei misteriosi affluenti',
+        icon: '🛶',
+        duration: '4 ore',
+        price: 80
+      }
+    ]
+  },
+  {
+    id: '9',
+    name: 'Petra',
+    country: 'Giordania',
+    continent: 'Asia',
+    description: 'Città antica scavata nella roccia, meraviglia archeologica.',
+    image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&h=600&fit=crop',
+    images: [
+      'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=800&h=600&fit=crop'
+    ],
+    budget: 'medium',
+    type: 'culture',
+    rating: 4.9,
+    coordinates: { lat: 30.3285, lng: 35.4444 },
+    bestTimeToVisit: ['Marzo', 'Aprile', 'Maggio', 'Ottobre', 'Novembre'],
+    duration: '2-4 giorni',
+    activities: [
+      {
+        id: '9-1',
+        name: 'Il Tesoro',
+        description: 'Ammira la facciata più famosa di Petra',
+        icon: '🏛️',
+        duration: '2 ore'
+      },
+      {
+        id: '9-2',
+        name: 'Monastero',
+        description: 'Sali al monumentale monastero',
+        icon: '⛰️',
+        duration: '4 ore'
+      }
+    ]
+  },
+  {
+    id: '10',
+    name: 'Serengeti',
+    country: 'Tanzania',
+    continent: 'Africa',
+    description: 'Safari nell\'ecosistema più famoso dell\'Africa.',
+    image: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?w=800&h=600&fit=crop',
+    images: [
+      'https://images.unsplash.com/photo-1516426122078-c23e76319801?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=800&h=600&fit=crop'
+    ],
+    budget: 'high',
+    type: 'nature',
+    rating: 4.9,
+    coordinates: { lat: -2.3333, lng: 34.8333 },
+    bestTimeToVisit: ['Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre'],
+    duration: '4-7 giorni',
+    activities: [
+      {
+        id: '10-1',
+        name: 'Grande Migrazione',
+        description: 'Assisti al fenomeno naturale più spettacolare',
+        icon: '🦓',
+        duration: '8 ore',
+        price: 300
+      },
+      {
+        id: '10-2',
+        name: 'Safari in mongolfiera',
+        description: 'Vola sopra la savana al tramonto',
+        icon: '🎈',
+        duration: '3 ore',
+        price: 500
+      }
+    ]
+  },
+  {
+    id: '11',
+    name: 'Kyoto',
+    country: 'Giappone',
+    continent: 'Asia',
+    description: 'Antica capitale con templi, giardini zen e tradizioni millenarie.',
+    image: 'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=800&h=600&fit=crop',
+    images: [
+      'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1528164344705-47542687000d?w=800&h=600&fit=crop'
+    ],
+    budget: 'high',
+    type: 'culture',
+    rating: 4.8,
+    coordinates: { lat: 35.0116, lng: 135.7681 },
+    bestTimeToVisit: ['Marzo', 'Aprile', 'Maggio', 'Ottobre', 'Novembre'],
+    duration: '4-6 giorni',
+    activities: [
+      {
+        id: '11-1',
+        name: 'Fushimi Inari',
+        description: 'Cammina tra migliaia di torii rossi',
+        icon: '⛩️',
+        duration: '3 ore'
+      },
+      {
+        id: '11-2',
+        name: 'Cerimonia del tè',
+        description: 'Partecipa alla tradizionale cerimonia',
+        icon: '🍵',
+        duration: '2 ore',
+        price: 50
+      }
+    ]
+  },
+  {
+    id: '12',
+    name: 'Banff',
+    country: 'Canada',
+    continent: 'North America',
+    description: 'Parco nazionale con laghi turchesi e montagne mozzafiato.',
+    image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=600&fit=crop',
+    images: [
+      'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop'
+    ],
+    budget: 'medium',
+    type: 'mountain',
+    rating: 4.7,
+    coordinates: { lat: 51.4968, lng: -115.9281 },
+    bestTimeToVisit: ['Giugno', 'Luglio', 'Agosto', 'Settembre'],
+    duration: '5-8 giorni',
+    activities: [
+      {
+        id: '12-1',
+        name: 'Lago Louise',
+        description: 'Ammira il lago color smeraldo',
+        icon: '🏔️',
+        duration: '2 ore'
+      },
+      {
+        id: '12-2',
+        name: 'Trekking Icefield',
+        description: 'Esplora i ghiacciai delle Montagne Rocciose',
+        icon: '🥾',
+        duration: '6 ore',
+        price: 180
+      }
+    ]
+  },
+  {
+    id: '13',
+    name: 'Toscana',
+    country: 'Italia',
+    continent: 'Europe',
+    description: 'Colline ondulate, vigneti e borghi medievali nel cuore d\'Italia.',
+    image: 'https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?w=800&h=600&fit=crop',
+    images: [
+      'https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=800&h=600&fit=crop'
+    ],
+    budget: 'medium',
+    type: 'countryside',
+    rating: 4.6,
+    coordinates: { lat: 43.7711, lng: 11.2486 },
+    bestTimeToVisit: ['Aprile', 'Maggio', 'Giugno', 'Settembre', 'Ottobre'],
+    duration: '5-10 giorni',
+    activities: [
+      {
+        id: '13-1',
+        name: 'Tour dei vini Chianti',
+        description: 'Degusta i famosi vini toscani',
+        icon: '🍷',
+        duration: '6 ore',
+        price: 120
+      },
+      {
+        id: '13-2',
+        name: 'San Gimignano',
+        description: 'Visita la città delle torri medievali',
+        icon: '🏰',
+        duration: '4 ore'
+      },
+      {
+        id: '13-3',
+        name: 'Cooking class',
+        description: 'Impara a cucinare i piatti tradizionali',
+        icon: '👨‍🍳',
+        duration: '3 ore',
+        price: 80
       }
     ]
   }

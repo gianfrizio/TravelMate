@@ -18,15 +18,23 @@ export default function DestinationsClient() {
   // Usa i parametri URL come single source of truth
   const searchQuery = searchParams?.get('search') || '';
   const continent = searchParams?.get('continent') || null;
+  const type = searchParams?.get('type') || null;
   
   // Debug dei parametri URL
-  console.log('DestinationsClient URL params:', { 
+  console.log('🔍 DestinationsClient URL params:', { 
     allParams: searchParams?.toString(),
     searchQuery, 
     continent,
+    type,
     continentRaw: searchParams?.get('continent'),
+    typeRaw: searchParams?.get('type'),
     cleared: searchParams?.get('_cleared')
   });
+  
+  // Debug aggiuntivo per il tipo
+  if (type) {
+    console.log('🎯 Type filter active:', type);
+  }
   
   // State temporaneo per la ricerca (solo durante la digitazione)
   const [tempSearchQuery, setTempSearchQuery] = useState(searchQuery);
@@ -68,7 +76,7 @@ export default function DestinationsClient() {
     const cleared = searchParams?.get('_cleared') === '1';
     
     // Solo se non ci sono parametri URL e non ci sono flag speciali, prova a ripristinare
-    if (!searchQuery && !continent && !fromLive && !cleared && lastSearch) {
+    if (!searchQuery && !continent && !type && !fromLive && !cleared && lastSearch) {
       const params = new URLSearchParams();
       if (lastSearch.query) {
         params.set('search', lastSearch.query);
@@ -87,20 +95,20 @@ export default function DestinationsClient() {
     const cleared = searchParams?.get('_cleared') === '1';
     const fromLive = searchParams?.get('from_live') === '1';
     
-    if (!cleared && !fromLive && (searchQuery || continent)) {
+    if (!cleared && !fromLive && (searchQuery || continent || type)) {
       setLastSearch(searchQuery, continent || '');
     }
     
     if (process.env.NODE_ENV !== 'production') {
       // eslint-disable-next-line no-console
-      console.debug('[DestinationsClient] searchParams', { raw: searchParams?.toString(), search: searchQuery, continent, cleared, fromLive });
+      console.debug('[DestinationsClient] searchParams', { raw: searchParams?.toString(), search: searchQuery, continent, type, cleared, fromLive });
     }
-  }, [searchQuery, continent, searchParams, setLastSearch]);
+  }, [searchQuery, continent, type, searchParams, setLastSearch]);
 
   // Salva lo stato solo quando si naviga via o si chiude la pagina
   useEffect(() => {
     const saveStateOnUnload = () => {
-      if (searchQuery || continent) {
+      if (searchQuery || continent || type) {
         setLastSearch(searchQuery, continent || '');
       }
     };
@@ -190,7 +198,7 @@ export default function DestinationsClient() {
                   />
                 </Suspense>
               </div>
-              {/* Filtri contestuali: continente (solo select). Non prefillare la search con il continente. */}
+              {/* Filtri contestuali: continente e tipo */}
               <div className="flex items-center gap-2">
                 <select
                   aria-label="Filtra per continente"
@@ -217,12 +225,46 @@ export default function DestinationsClient() {
                   }}
                   className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2"
                 >
-                  <option value="">Tutti i continenti</option>
-                  <option value="Europe">Europa</option>
-                  <option value="Asia">Asia</option>
-                  <option value="America">America</option>
-                  <option value="Africa">Africa</option>
-                  <option value="Oceania">Oceania</option>
+                  <option value="">🌍 Tutti i continenti</option>
+                  <option value="Europe">🌍 Europa</option>
+                  <option value="Asia">🌏 Asia</option>
+                  <option value="America">🌎 America</option>
+                  <option value="Africa">🌍 Africa</option>
+                  <option value="Oceania">🌍 Oceania</option>
+                </select>
+
+                <select
+                  aria-label="Filtra per tipo"
+                  value={type ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    const params = new URLSearchParams(searchParams?.toString() || '');
+                    
+                    console.log('🎯 Type filter changed to:', v);
+                    
+                    if (v) {
+                      params.set('type', v);
+                      params.set('focus', '1');
+                    } else {
+                      params.delete('type');
+                      params.delete('focus');
+                      // Aggiungi un flag temporaneo per indicare che l'utente ha rimosso esplicitamente il filtro
+                      params.set('_cleared', '1');
+                    }
+                    
+                    const newUrl = `${pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+                    console.log('🔄 Updating URL for type filter:', newUrl);
+                    router.push(newUrl);
+                  }}
+                  className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2"
+                >
+                  <option value="">🗺️ Tutti i tipi</option>
+                  <option value="city">🏙️ Città</option>
+                  <option value="nature">🌿 Natura</option>
+                  <option value="culture">🏛️ Cultura</option>
+                  <option value="beach">🏖️ Mare</option>
+                  <option value="mountain">⛰️ Montagna</option>
+                  <option value="countryside">🌾 Campagna</option>
                 </select>
               </div>
             <div className="flex gap-2">
@@ -236,25 +278,83 @@ export default function DestinationsClient() {
               </Button>
             </div>
           </div>
-          {searchQuery && (
-            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-between">
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                Risultati per: <strong>{searchQuery}</strong>
-              </p>
-              <button
-                onClick={() => {
-                  // Cancella la ricerca e torna al filtro generale
-                  setTempSearchQuery('');
-                  handleSearch('');
-                }}
-                className="ml-3 text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-200 transition-colors p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-800/30"
-                aria-label="Cancella ricerca"
-                title="Cancella ricerca"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+          {(searchQuery || continent || type) && (
+            <div className="mt-4 space-y-2">
+              {searchQuery && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-between">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    Risultati per: <strong>{searchQuery}</strong>
+                  </p>
+                  <button
+                    onClick={() => {
+                      setTempSearchQuery('');
+                      handleSearch('');
+                    }}
+                    className="ml-3 text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-200 transition-colors p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-800/30"
+                    aria-label="Cancella ricerca"
+                    title="Cancella ricerca"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+              
+              {continent && (
+                <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center justify-between">
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    Continente: 🌍 <strong>{continent}</strong>
+                  </p>
+                  <button
+                    onClick={() => {
+                      const params = new URLSearchParams(searchParams?.toString() || '');
+                      params.delete('continent');
+                      params.set('_cleared', '1');
+                      const newUrl = `${pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+                      router.replace(newUrl);
+                    }}
+                    className="ml-3 text-green-500 dark:text-green-400 hover:text-green-700 dark:hover:text-green-200 transition-colors p-1 rounded-full hover:bg-green-100 dark:hover:bg-green-800/30"
+                    aria-label="Rimuovi filtro continente"
+                    title="Rimuovi filtro continente"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+              
+              {type && (
+                <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center justify-between">
+                  <p className="text-sm text-purple-700 dark:text-purple-300">
+                    Tipo: <strong>
+                      {type === 'city' ? '🏙️ Città' :
+                       type === 'nature' ? '🌿 Natura' :
+                       type === 'culture' ? '🏛️ Cultura' :
+                       type === 'beach' ? '🏖️ Mare' :
+                       type === 'mountain' ? '⛰️ Montagna' :
+                       type === 'countryside' ? '🌾 Campagna' : type}
+                    </strong>
+                  </p>
+                  <button
+                    onClick={() => {
+                      const params = new URLSearchParams(searchParams?.toString() || '');
+                      params.delete('type');
+                      params.set('_cleared', '1');
+                      const newUrl = `${pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+                      router.replace(newUrl);
+                    }}
+                    className="ml-3 text-purple-500 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-200 transition-colors p-1 rounded-full hover:bg-purple-100 dark:hover:bg-purple-800/30"
+                    aria-label="Rimuovi filtro tipo"
+                    title="Rimuovi filtro tipo"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </motion.div>
@@ -266,7 +366,7 @@ export default function DestinationsClient() {
           transition={{ duration: 0.5, delay: 0.3 }}
         >
             <Suspense fallback={<div className="grid grid-cols-3 gap-6 py-12">{Array.from({length:3}).map((_,i)=>(<div key={i} className="animate-pulse bg-gray-100 dark:bg-gray-800 rounded-2xl h-80"/>))}</div>}>
-            <LiveDestinations searchQuery={searchQuery} continent={continent ?? undefined} maxItems={24} onLoading={(l) => setIsLoading(l)} />
+            <LiveDestinations searchQuery={searchQuery} continent={continent ?? undefined} type={type ?? undefined} maxItems={48} onLoading={(l) => setIsLoading(l)} />
           </Suspense>
         </motion.div>
       </div>

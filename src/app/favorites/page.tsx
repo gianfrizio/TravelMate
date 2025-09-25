@@ -12,6 +12,7 @@ import {
   PlaneTakeoff
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Destination, ItineraryItem } from '@/types';
 import { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
@@ -19,6 +20,7 @@ import { destinations } from '@/data/destinations';
 import { useApp } from '@/context/AppContext';
 
 export default function FavoritesPage() {
+  const router = useRouter();
   const { state, removeFromFavorites, removeFromItinerary } = useApp();
   const [activeTab, setActiveTab] = useState<'favorites' | 'itinerary'>('favorites');
 
@@ -211,54 +213,90 @@ export default function FavoritesPage() {
                   {favoriteDestinationsResolved.map((destination: Destination, index: number) => (
                     <motion.div
                       key={destination.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: index * 0.1 }}
-                      className="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300"
+                      initial={{ opacity: 0, y: 60, rotateY: -15 }}
+                      animate={{ opacity: 1, y: 0, rotateY: 0 }}
+                      transition={{ 
+                        duration: 0.6, 
+                        delay: index * 0.1,
+                        type: "spring",
+                        stiffness: 100
+                      }}
+                      whileHover={{ 
+                        scale: 1.05, 
+                        rotateY: 5,
+                        transition: { duration: 0.2 }
+                      }}
+                      className="group cursor-pointer bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-100 dark:border-gray-700"
+                      onClick={() => router.push(`/destinations/${destination.id}`)}
                     >
                       <div className="relative h-48 overflow-hidden">
-                        <div
-                          className="absolute inset-0 bg-cover bg-center group-hover:scale-110 transition-transform duration-300"
+                        <motion.div
+                          className="absolute inset-0 bg-cover bg-center"
                           style={{ backgroundImage: `url('${destination.image}')` }}
+                          whileHover={{ scale: 1.1 }}
+                          transition={{ duration: 0.5 }}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                         
                         {/* Pulsante rimuovi */}
-                        <button
-                          onClick={() => removeFromFavorites(destination.id)}
-                          className="absolute top-4 right-4 p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors"
+                        <motion.button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFromFavorites(destination.id);
+                          }}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="absolute top-4 right-4 p-2 bg-red-500/90 hover:bg-red-600 text-white rounded-full transition-colors shadow-lg backdrop-blur-sm"
                         >
                           <Heart className="w-4 h-4 fill-current" />
-                        </button>
+                        </motion.button>
 
                         {/* Badge valutazione */}
-                        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 flex items-center space-x-1">
+                        <div className="absolute top-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1 shadow-lg">
                           <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                          <span className="text-sm font-medium">{destination.rating}</span>
+                          <span className="text-sm font-semibold text-black dark:text-white">{destination.rating?.toFixed(1) || 'N/A'}</span>
                         </div>
                       </div>
                       
                       <div className="p-6">
-                        <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 mb-2">
-                          <MapPin className="w-4 h-4" />
-                          <span className="text-sm">{destination.country}</span>
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors mb-1">
+                              {destination.name}
+                            </h3>
+                            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+                              <MapPin className="w-4 h-4" />
+                              {destination.country}
+                            </div>
+                          </div>
+                          <div className="text-2xl">
+                            {destination.type === 'beach' ? '🏖️' :
+                             destination.type === 'mountain' ? '⛰️' :
+                             destination.type === 'city' ? '🏙️' :
+                             destination.type === 'culture' ? '🏛️' :
+                             destination.type === 'nature' ? '🌿' : '🌾'}
+                          </div>
                         </div>
-                        
-                        <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">
-                          {destination.name}
-                        </h3>
                         
                         <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
                           {destination.description}
                         </p>
                         
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
                           <div />
-                          <Link href={`/destinations/${destination.id}`}>
-                            <Button size="sm">
-                              Dettagli
-                            </Button>
-                          </Link>
+                          <motion.div
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <Link href={`/destinations/${destination.id}`}>
+                              <Button 
+                                size="sm"
+                                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium px-6 py-2 shadow-lg"
+                              >
+                                Dettagli
+                              </Button>
+                            </Link>
+                          </motion.div>
                         </div>
                       </div>
                     </motion.div>
@@ -266,51 +304,82 @@ export default function FavoritesPage() {
                   {unresolvedEntries.map((entry, i) => (
                     <motion.div
                       key={`unresolved-${i}-${String(entry.raw)}`}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: (favoriteDestinationsResolved.length + i) * 0.05 }}
-                      className="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300"
+                      initial={{ opacity: 0, y: 60, rotateY: -15 }}
+                      animate={{ opacity: 1, y: 0, rotateY: 0 }}
+                      transition={{ 
+                        duration: 0.6, 
+                        delay: (favoriteDestinationsResolved.length + i) * 0.05,
+                        type: "spring",
+                        stiffness: 100
+                      }}
+                      whileHover={{ 
+                        scale: 1.05, 
+                        rotateY: 5,
+                        transition: { duration: 0.2 }
+                      }}
+                      className="group cursor-pointer bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-100 dark:border-gray-700"
                     >
                       <div className="relative h-48 overflow-hidden">
-                        <div
-                          className="absolute inset-0 bg-cover bg-center group-hover:scale-110 transition-transform duration-300 bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-6xl"
+                        <motion.div
+                          className="absolute inset-0 bg-cover bg-center bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-6xl"
                           style={{ backgroundImage: unresolvedImageFor(entry.raw) ? `url('${unresolvedImageFor(entry.raw)}')` : undefined }}
+                          whileHover={{ scale: 1.1 }}
+                          transition={{ duration: 0.5 }}
                         >
                           {!unresolvedImageFor(entry.raw) && <div className="text-gray-500 dark:text-gray-400">📸</div>}
-                        </div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                        </motion.div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
                         {/* Pulsante rimuovi per voci non risolte */}
-                        <button
-                          onClick={() => removeFromFavorites(entry.raw)}
-                          className="absolute top-4 right-4 p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors"
+                        <motion.button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFromFavorites(entry.raw);
+                          }}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="absolute top-4 right-4 p-2 bg-red-500/90 hover:bg-red-600 text-white rounded-full transition-colors shadow-lg backdrop-blur-sm"
                         >
                           <Heart className="w-4 h-4 fill-current" />
-                        </button>
+                        </motion.button>
                       </div>
 
                       <div className="p-6">
-                        <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 mb-2">
-                          <MapPin className="w-4 h-4" />
-                          <span className="text-sm">—</span>
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors mb-1">
+                              {String(entry.raw)}
+                            </h3>
+                            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+                              <MapPin className="w-4 h-4" />
+                              —
+                            </div>
+                          </div>
+                          <div className="text-2xl">🗺️</div>
                         </div>
-
-                        <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">
-                          {String(entry.raw)}
-                        </h3>
 
                         <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
                           Informazioni non disponibili per questa destinazione.
                         </p>
 
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
                           <div />
-                          <Button size="sm" onClick={() => {
-                            // Prova ad andare alla pagina live e passa il nome della città come query in modo che l'utente possa recuperare i dettagli
-                            window.location.href = `/destinations/live?name=${encodeURIComponent(String(entry.raw))}`;
-                          }}>
-                            Scopri di più
-                          </Button>
+                          <motion.div
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <Button 
+                              size="sm" 
+                              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium px-6 py-2 shadow-lg"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Prova ad andare alla pagina live e passa il nome della città come query in modo che l'utente possa recuperare i dettagli
+                                window.location.href = `/destinations/live?name=${encodeURIComponent(String(entry.raw))}`;
+                              }}
+                            >
+                              Scopri di più
+                            </Button>
+                          </motion.div>
                         </div>
                       </div>
                     </motion.div>

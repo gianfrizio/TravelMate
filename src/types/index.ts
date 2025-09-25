@@ -8,7 +8,7 @@ export interface Destination {
   images: string[];
   price?: number;
   budget: 'low' | 'medium' | 'high';
-  type: 'beach' | 'mountain' | 'city' | 'countryside';
+  type: 'beach' | 'mountain' | 'city' | 'countryside' | 'culture' | 'nature';
   activities: Activity[];
   rating: number;
   coordinates: {
