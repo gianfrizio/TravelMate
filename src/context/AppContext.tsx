@@ -1,14 +1,15 @@
 "use client";
 
-import { createContext, useContext, useReducer, useEffect, useRef, ReactNode } from 'react';
+import { createContext, useContext, useReducer, useEffect, useRef, ReactNode, useState } from 'react';
 import { Destination, User, ItineraryItem } from '@/types';
-import { destinations } from '@/data/destinations';
 
 interface AppState {
   user: User | null;
   favorites: string[];
   itinerary: ItineraryItem[];
   isLoading: boolean;
+  destinations: Destination[];
+  destinationsLoading: boolean;
   lastSearchState: {
     query: string;
     continent: string;
@@ -23,6 +24,8 @@ type AppAction =
   | { type: 'ADD_TO_ITINERARY'; payload: ItineraryItem }
   | { type: 'REMOVE_FROM_ITINERARY'; payload: string }
   | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_DESTINATIONS'; payload: Destination[] }
+  | { type: 'SET_DESTINATIONS_LOADING'; payload: boolean }
   | { type: 'LOAD_FROM_STORAGE'; payload: Partial<AppState> }
   | { type: 'SET_LAST_SEARCH'; payload: { query: string; continent: string } };
     
@@ -31,6 +34,8 @@ const initialState: AppState = {
   favorites: [],
   itinerary: [],
   isLoading: false,
+  destinations: [],
+  destinationsLoading: false,
   lastSearchState: null,
 };
 
@@ -60,6 +65,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
     
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
+    
+    case 'SET_DESTINATIONS':
+      return { ...state, destinations: action.payload };
+    
+    case 'SET_DESTINATIONS_LOADING':
+      return { ...state, destinationsLoading: action.payload };
     
     case 'LOAD_FROM_STORAGE':
       return { ...state, ...action.payload };
@@ -111,29 +122,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return s.toLowerCase();
     };
 
-    const resolveId = (ident: unknown): string | null => {
-      if (!ident) return null;
-  // Se è un oggetto con id o name, preferiscili
-      if (typeof ident === 'object' && ident !== null) {
-  // @ts-ignore - struttura dinamica proveniente da localStorage
-        if ('id' in ident && (ident as any).id) return String((ident as any).id);
-  // @ts-ignore
-        if ('name' in ident && (ident as any).name) return String((ident as any).name);
-      }
-
+    const resolve = (ident: string) => {
+      if (!ident || !state.destinations || state.destinations.length === 0) return null;
       const s = String(ident).trim();
 
   // Prova prima a cercare per id (esatto)
-      const byId = destinations.find(d => d.id === s);
+      const byId = state.destinations.find(d => d.id === s);
       if (byId) return byId.id;
 
   // Normalizza e prova a confrontare per nome in modo più flessibile
       const sNorm = normalizeKey(s);
-      const byExactName = destinations.find(d => d.name.toLowerCase() === sNorm);
+      const byExactName = state.destinations.find(d => d.name.toLowerCase() === sNorm);
       if (byExactName) return byExactName.id;
 
   // Prova confronti per sottostringa (es. 'Rome' vs 'Rome, Italy' o 'New York City')
-      const byIncludes = destinations.find(d => d.name.toLowerCase().includes(sNorm) || sNorm.includes(d.name.toLowerCase()));
+      const byIncludes = state.destinations.find(d => d.name.toLowerCase().includes(sNorm) || sNorm.includes(d.name.toLowerCase()));
       if (byIncludes) return byIncludes.id;
 
       return null;
@@ -143,8 +146,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Mantieni le stringhe grezze non risolte così rimangono visibili nell'UI (non vogliamo eliminare silenziosamente i valori salvati dall'utente).
     let favorites: string[] = [];
     if (Array.isArray(rawFavorites)) {
-      const resolvedList = rawFavorites.map((item: any) => {
-        const resolved = resolveId(item);
+      const resolvedList = (rawFavorites as any[]).map((item: any) => {
+        const resolved = resolve(item);
   // Se risolto, usa l'id canonico; altrimenti mantieni il valore grezzo originale (stringificato)
         return resolved || (item == null ? null : String(item));
       }).filter((v: any) => v !== null) as string[];
@@ -177,12 +180,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Normalizza gli elementi dell'itinerario (destinationId) quando possibile
     let itinerary: any[] = [];
     if (Array.isArray(rawItinerary)) {
-      itinerary = rawItinerary.map((it: any) => {
+      itinerary = (rawItinerary as any[]).map((it: any) => {
         let destId: string | null = null;
         if (it && typeof it === 'object') {
-          if (it.destinationId) destId = resolveId(it.destinationId) || String(it.destinationId);
-          else if (it.destination && (it.destination.id || it.destination.name)) destId = resolveId(it.destination) || it.destination.id || it.destination.name;
-          else if (it.id && destinations.find(d => d.id === it.id)) destId = it.id;
+          if (it.destinationId) destId = resolve(it.destinationId) || String(it.destinationId);
+          else if (it.destination && (it.destination.id || it.destination.name)) destId = resolve(it.destination) || it.destination.id || it.destination.name;
+          else if (it.id && state.destinations && state.destinations.find(d => d.id === it.id)) destId = it.id;
         }
         return { ...it, destinationId: destId };
       });
@@ -241,13 +244,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Prova a risolvere all'id canonico del dataset per id o nome (case-insensitive)
     const resolve = (ident: string) => {
       if (!ident) return ident;
-  // Se corrisponde a un id del dataset, restituiscilo
-      const byId = destinations.find(d => d.id === ident);
-      if (byId) return byId.id;
-  // Prova a confrontare per nome (case-insensitive)
-      const byName = destinations.find(d => d.name.toLowerCase() === ident.toLowerCase());
-      if (byName) return byName.id;
-  // fallback all'identificatore fornito
+      
+      // Only try to resolve if we have destinations loaded
+      if (state.destinations && state.destinations.length > 0) {
+        // Se corrisponde a un id del dataset, restituiscilo
+        const byId = state.destinations.find(d => d.id === ident);
+        if (byId) return byId.id;
+        // Prova a confrontare per nome (case-insensitive)
+        const byName = state.destinations.find(d => d.name.toLowerCase() === ident.toLowerCase());
+        if (byName) return byName.id;
+      }
+      
+      // fallback all'identificatore fornito
       return ident;
     };
 
@@ -258,10 +266,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const removeFromFavorites = (destinationId: string) => {
     const resolve = (ident: string) => {
       if (!ident) return ident;
-      const byId = destinations.find(d => d.id === ident);
-      if (byId) return byId.id;
-      const byName = destinations.find(d => d.name.toLowerCase() === ident.toLowerCase());
-      if (byName) return byName.id;
+      
+      // Only try to resolve if we have destinations loaded
+      if (state.destinations && state.destinations.length > 0) {
+        const byId = state.destinations.find(d => d.id === ident);
+        if (byId) return byId.id;
+        const byName = state.destinations.find(d => d.name.toLowerCase() === ident.toLowerCase());
+        if (byName) return byName.id;
+      }
+      
       return ident;
     };
 
@@ -284,12 +297,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const isFavorite = (destinationId: string) => {
     if (!destinationId) return false;
-  // risolvi in modo analogo ad add/remove
-    const byId = destinations.find(d => d.id === destinationId);
-    if (byId && state.favorites.includes(byId.id)) return true;
-    const byName = destinations.find(d => d.name.toLowerCase() === destinationId.toLowerCase());
-    if (byName && state.favorites.includes(byName.id)) return true;
-    return state.favorites.includes(destinationId);
+    
+    // Always check if the destinationId is directly in favorites first
+    if (state.favorites.includes(destinationId)) return true;
+    
+    // If we have destinations loaded, try to resolve by ID or name
+    if (state.destinations && state.destinations.length > 0) {
+      const byId = state.destinations.find(d => d.id === destinationId);
+      if (byId && state.favorites.includes(byId.id)) return true;
+      const byName = state.destinations.find(d => d.name.toLowerCase() === destinationId.toLowerCase());
+      if (byName && state.favorites.includes(byName.id)) return true;
+    }
+    
+    return false;
   };
 
   const setLastSearch = (query: string, continent: string) => {
@@ -359,6 +379,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
       };
     }
   }, [state.lastSearchState]);
+
+  // Carica le destinazioni dinamiche all'inizializzazione
+  useEffect(() => {
+    if (state.destinations.length === 0 && !state.destinationsLoading) {
+      const loadDestinations = async () => {
+        dispatch({ type: 'SET_DESTINATIONS_LOADING', payload: true });
+        try {
+          const response = await fetch('/api/destinations');
+          if (response.ok) {
+            const destinations = await response.json();
+            dispatch({ type: 'SET_DESTINATIONS', payload: destinations });
+          }
+        } catch (error) {
+          console.error('Failed to load destinations:', error);
+        } finally {
+          dispatch({ type: 'SET_DESTINATIONS_LOADING', payload: false });
+        }
+      };
+      
+      loadDestinations();
+    }
+  }, [state.destinations.length, state.destinationsLoading]);
 
   const value: AppContextType = {
     state,

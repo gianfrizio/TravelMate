@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { destinations } from '@/data/destinations';
+import { Destination } from '@/types';
 
 // RNG con seed semplice (mulberry32) quando viene fornito il parametro `seed` nella query
 function mulberry32(a: number) {
@@ -66,7 +66,15 @@ export async function GET(req: Request) {
     const diversity = params.get('diversity') === '1' || params.get('diversity') === 'true';
     const topActivities = Math.max(1, Math.min(10, parseInt(params.get('activities') || '3', 10)));
 
-    let pool = destinations.filter((d) => {
+    // Fetch destinations from the dynamic API
+    const baseUrl = req.url.split('/api/random-destinations')[0];
+    const destinationsResponse = await fetch(`${baseUrl}/api/destinations`);
+    if (!destinationsResponse.ok) {
+      return NextResponse.json({ error: 'Failed to fetch destinations' }, { status: 500 });
+    }
+    const destinations = await destinationsResponse.json();
+
+    let pool = destinations.filter((d: Destination) => {
       if (continent && d.continent && d.continent.toLowerCase() !== continent.toLowerCase()) return false;
       if (type && d.type && d.type.toLowerCase() !== type.toLowerCase()) return false;
       if (budget && d.budget && d.budget.toLowerCase() !== budget.toLowerCase()) return false;
@@ -80,10 +88,10 @@ export async function GET(req: Request) {
     const rng = seedParam ? mulberry32(hashStringToInt(seedParam)) : Math.random;
 
   // Se è richiesta diversità, cerca di selezionare prima da continenti differenti
-    let selected = [] as typeof destinations;
+    let selected: Destination[] = [];
 
     if (diversity) {
-      const byContinent: Record<string, typeof destinations> = {};
+      const byContinent: Record<string, Destination[]> = {};
       for (const d of pool) {
         const key = (d.continent || 'unknown').toLowerCase();
         byContinent[key] = byContinent[key] || [];
@@ -115,26 +123,26 @@ export async function GET(req: Request) {
 
   // se servono ancora elementi, riempi con scelte ponderate o casuali dal pool rimanente
       if (selected.length < n) {
-        const remaining = pool.filter((p) => !selected.find((s) => s.id === p.id));
+        const remaining = pool.filter((p: Destination) => !selected.find((s: Destination) => s.id === p.id));
         if (weighted) {
-          const weights = remaining.map((r) => Math.max(0.1, (r.rating || 1)));
+          const weights = remaining.map((r: Destination) => Math.max(0.1, 1)); // Rating removed, default to 1
           selected = selected.concat(weightedSampleWithoutReplacement(remaining, weights, n - selected.length, rng));
         } else {
-          selected = selected.concat(shuffle(remaining, rng).slice(0, n - selected.length));
+          selected = selected.concat(shuffle(remaining, rng).slice(0, n - selected.length) as Destination[]);
         }
       }
     } else {
   // nessuna diversità richiesta
       if (weighted) {
-        const weights = pool.map((p) => Math.max(0.1, (p.rating || 1)));
+        const weights = pool.map((p: Destination) => Math.max(0.1, 1)); // Rating removed, default to 1
         selected = weightedSampleWithoutReplacement(pool, weights, n, rng as any);
       } else {
-        selected = shuffle(pool, rng as any).slice(0, n);
+        selected = shuffle(pool, rng as any).slice(0, n) as Destination[];
       }
     }
 
   // Per ogni destinazione selezionata, scegli fino a `topActivities` attività (randomizzate ma stabili se viene usato un seed)
-    const results = selected.map((d) => {
+    const results = selected.map((d: Destination) => {
       const activities = d.activities || [];
       const chosenActivities = shuffle(activities, rng as any).slice(0, Math.min(topActivities, activities.length));
       return { ...d, activities: chosenActivities };

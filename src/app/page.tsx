@@ -187,8 +187,8 @@ export default function Home() {
               viewport={{ once: true }}
               className="text-white"
             >
-              <div className="text-4xl font-bold mb-2">4.8</div>
-              <div className="text-xl">Rating Medio</div>
+              <div className="text-4xl font-bold mb-2">50+</div>
+              <div className="text-xl">Guide Esperte</div>
             </motion.div>
           </div>
         </div>

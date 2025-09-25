@@ -5,8 +5,6 @@ import {
   Heart, 
   Calendar, 
   MapPin, 
-  Star, 
-  
   Trash2, 
   Plus,
   PlaneTakeoff
@@ -16,7 +14,6 @@ import { useRouter } from 'next/navigation';
 import { Destination, ItineraryItem } from '@/types';
 import { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
-import { destinations } from '@/data/destinations';
 import { useApp } from '@/context/AppContext';
 
 export default function FavoritesPage() {
@@ -24,6 +21,9 @@ export default function FavoritesPage() {
   const { state, removeFromFavorites, removeFromItinerary } = useApp();
   const [activeTab, setActiveTab] = useState<'favorites' | 'itinerary'>('favorites');
 
+
+  // Stato per destinazioni dinamiche create
+  const [dynamicDestinations, setDynamicDestinations] = useState<Record<string, Destination>>({});
 
   // Normalizza i preferiti provenienti dallo state: possono essere memorizzati come id, nomi o vecchie forme di oggetto.
   const normalizeKey = (raw: unknown) => {
@@ -33,84 +33,266 @@ export default function FavoritesPage() {
     return s.toLowerCase();
   };
 
-  const canonicalFavoriteIds = Array.from(new Set(state.favorites
-    .map((f: any) => f)
-    .map((val: any) => {
-      // se è un oggetto con id
-      if (val && typeof val === 'object') {
-        if (val.id) return String(val.id);
-        if (val.name) return String(val.name);
+  // Funzione per creare una destinazione dinamica
+  const createDynamicDestination = async (name: string): Promise<Destination | null> => {
+    try {
+      // Controlla se abbiamo già creato questa destinazione
+      if (dynamicDestinations[name]) {
+        return dynamicDestinations[name];
       }
-      return String(val);
-    })
-    .map((s: string) => {
-      const byId = destinations.find(d => d.id === s);
-      if (byId) return byId.id;
-      const key = normalizeKey(s);
-      const byExact = destinations.find(d => d.name.toLowerCase() === key);
-      if (byExact) return byExact.id;
-      const byIncludes = destinations.find(d => d.name.toLowerCase().includes(key) || key.includes(d.name.toLowerCase()));
-      if (byIncludes) return byIncludes.id;
-      return null;
-    })
-    .filter(Boolean) as string[]
-  ));
 
-  // Helper per risolvere un singolo valore raw dei preferiti a scopo di debug
-  const resolveRawFavorite = (val: any) => {
-    if (val && typeof val === 'object') {
-      if (val.id) return String(val.id);
-      if (val.name) return String(val.name);
-    }
-    const s = String(val || '').trim();
-    const byId = destinations.find(d => d.id === s);
-    if (byId) return byId.id;
-    const key = normalizeKey(s);
-    const byExact = destinations.find(d => d.name.toLowerCase() === key);
-    if (byExact) return byExact.id;
-    const byIncludes = destinations.find(d => d.name.toLowerCase().includes(key) || key.includes(d.name.toLowerCase()));
-    if (byIncludes) return byIncludes.id;
-    return null;
-  };
-
-  const resolvedMap = state.favorites.map((f: any) => ({ raw: f, resolved: resolveRawFavorite(f) }));
-  const unresolvedEntries = resolvedMap.filter(r => !r.resolved);
-  const resolvedIds = resolvedMap.map(r => r.resolved).filter(Boolean) as string[];
-  const [unresolvedImages, setUnresolvedImages] = useState<Record<string, string | null>>({});
-  const unresolvedImageFor = (raw: any) => {
-    const key = String(raw);
-    return unresolvedImages[key] || null;
-  };
-
-  // Recupera immagini per le voci non risolte (tentativo migliorativo)
-  useEffect(() => {
-    const toFetch = unresolvedEntries.map(u => String(u.raw)).filter(k => !unresolvedImages[k]);
-    if (toFetch.length === 0) return;
-
-  toFetch.forEach(async (city) => {
+      // Prova a ottenere informazioni geografiche dettagliate come in LiveDestinations
+      let geoData = null;
+      let cityName = name;
+      let country = 'Sconosciuto';
+      let coordinates = { lat: 0, lng: 0 };
+      
       try {
-        const res = await fetch(`/api/city-images?city=${encodeURIComponent(city)}`);
-        if (!res.ok) throw new Error('no image');
-        const j = await res.json();
-        if (j?.imageUrl) {
-          setUnresolvedImages(prev => ({ ...prev, [city]: j.imageUrl }));
-          return;
+        const geoRes = await fetch(`/api/geocode?q=${encodeURIComponent(name)}&limit=1&lang=it`);
+        if (geoRes.ok) {
+          const geocode = await geoRes.json();
+          const suggestion = geocode?.suggestions?.[0];
+          if (suggestion) {
+            // Usa la localizzazione italiana per i nomi
+            cityName = (suggestion.name || '').split(',')[0].trim() || name;
+            country = suggestion.country || suggestion.name.split(',').slice(1).join(',').trim() || 'Sconosciuto';
+            coordinates = {
+              lat: suggestion.lat || 0,
+              lng: suggestion.lon || 0
+            };
+            geoData = suggestion;
+          }
         }
       } catch (e) {
-        // ignora errori nella richiesta immagine
+        console.warn('Errore geocoding:', e);
       }
-      setUnresolvedImages(prev => ({ ...prev, [city]: null }));
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(unresolvedEntries)]);
 
-  const favoriteDestinationsResolved = destinations.filter(d => canonicalFavoriteIds.includes(d.id));
+      // Funzione per generare URL immagini affidabili come in LiveDestinations
+      const getCityImage = (cityName: string, index: number = 0): string => {
+        const cityImages: Record<string, string> = {
+          // Città principali
+          'Rome': 'https://images.unsplash.com/photo-1552832230-c0197040d963?w=800&h=600&fit=crop',
+          'Roma': 'https://images.unsplash.com/photo-1552832230-c0197040d963?w=800&h=600&fit=crop',
+          'Paris': 'https://images.unsplash.com/photo-1502602898536-47ad22581b52?w=800&h=600&fit=crop',
+          'Parigi': 'https://images.unsplash.com/photo-1502602898536-47ad22581b52?w=800&h=600&fit=crop',
+          'Tokyo': 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&h=600&fit=crop',
+          'New York': 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800&h=600&fit=crop',
+          'London': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&h=600&fit=crop',
+          'Londra': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&h=600&fit=crop',
+          'Barcelona': 'https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=800&h=600&fit=crop',
+          'Amsterdam': 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=800&h=600&fit=crop',
+          'Prague': 'https://images.unsplash.com/photo-1541849546-216549ae216d?w=800&h=600&fit=crop',
+          'Praga': 'https://images.unsplash.com/photo-1541849546-216549ae216d?w=800&h=600&fit=crop',
+          'Vienna': 'https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=800&h=600&fit=crop',
+          'Florence': 'https://images.unsplash.com/photo-1691319683356-c8ac7f6647c1?w=800&h=600&fit=crop&auto=format&v=2',
+          'Firenze': 'https://images.unsplash.com/photo-1691319683356-c8ac7f6647c1?w=800&h=600&fit=crop&auto=format&v=2',
+          'Berlin': 'https://images.unsplash.com/photo-1587330979470-3016b6702d89?w=800&h=600&fit=crop',
+          'Berlino': 'https://images.unsplash.com/photo-1587330979470-3016b6702d89?w=800&h=600&fit=crop',
+          'Madrid': 'https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=800&h=600&fit=crop',
+          'Athens': 'https://images.unsplash.com/photo-1555993539-1732b0258235?w=800&h=600&fit=crop',
+          'Atene': 'https://images.unsplash.com/photo-1555993539-1732b0258235?w=800&h=600&fit=crop',
+          'Budapest': 'https://images.unsplash.com/photo-1518952071651-e4b9b5c93c6a?w=800&h=600&fit=crop',
+          'Istanbul': 'https://images.unsplash.com/photo-1524231757912-21530d92b9bb?w=800&h=600&fit=crop',
+          'Dubai': 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&h=600&fit=crop',
+          'Sydney': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
+          'Bangkok': 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=800&h=600&fit=crop',
+          'Singapore': 'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=800&h=600&fit=crop',
+          'Hong Kong': 'https://images.unsplash.com/photo-1518002171953-a080ee817e1f?w=800&h=600&fit=crop',
+          
+          // Destinazioni mare/beach
+          'Santorini': 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800&h=600&fit=crop',
+          'Mykonos': 'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=800&h=600&fit=crop',
+          'Ibiza': 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&h=600&fit=crop',
+          'Nice': 'https://images.unsplash.com/photo-1572252821143-035ad3cdf51d?w=800&h=600&fit=crop',
+          'Nizza': 'https://images.unsplash.com/photo-1572252821143-035ad3cdf51d?w=800&h=600&fit=crop',
+          'Bali': 'https://images.unsplash.com/photo-1537953773345-d172ccf13cf1?w=800&h=600&fit=crop',
+          'Maldive': 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=800&h=600&fit=crop',
+          'Maldives': 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=800&h=600&fit=crop',
+          'Cancun': 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&h=600&fit=crop',
+          'Miami': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop'
+        };
+        
+        // Normalizza il nome della città per una ricerca più flessibile
+        const normalizedCityName = cityName.toLowerCase()
+          .replace(/[^a-z\s]/g, '') // rimuove caratteri speciali
+          .trim();
+        
+        // Cerca per nome esatto della città
+        const exactMatch = Object.keys(cityImages).find(key => {
+          const normalizedKey = key.toLowerCase().replace(/[^a-z\s]/g, '').trim();
+          return normalizedCityName.includes(normalizedKey) || normalizedKey.includes(normalizedCityName);
+        });
+        
+        if (exactMatch) {
+          return cityImages[exactMatch];
+        }
+        
+        // Fallback finale con Picsum Photos (immagini di paesaggi) usando hash deterministico
+        const hash = Math.abs(cityName.split('').reduce((a: number, b: string) => a + b.charCodeAt(0), 0));
+        const imageId = 100 + (hash % 900); // Genera ID tra 100-999
+        return `https://picsum.photos/800/600?random=${imageId}`;
+      };
+
+      // Prova a ottenere immagine e descrizione dettagliata come in LiveDestinations
+      let imageUrl = getCityImage(cityName, 0); // Usa fallback affidabile di default
+      let apiDescription: string | null = null;
+      
+      try {
+        const imgRes = await fetch(`/api/city-images?city=${encodeURIComponent(cityName)}`);
+        if (imgRes.ok) {
+          const imgData = await imgRes.json();
+          // Solo usa l'immagine dall'API se sembra affidabile
+          if (imgData?.imageUrl && imgData.imageUrl.includes('unsplash.com')) {
+            imageUrl = imgData.imageUrl;
+          } else if (imgData?.fallbackUrl && imgData.fallbackUrl.includes('unsplash.com')) {
+            imageUrl = imgData.fallbackUrl;
+          }
+          // Altrimenti mantieni il fallback deterministico
+
+          // Preferisci descrizione/titolo in Italiano quando fornito dall'API
+          if (imgData.description) {
+            apiDescription = imgData.description;
+          } else if (imgData.longExtract) {
+            apiDescription = imgData.longExtract;
+          } else if (imgData.title && typeof imgData.title === 'string') {
+            apiDescription = String(imgData.title);
+          }
+        }
+      } catch (e) {
+        console.warn('Errore recupero immagine:', e);
+        // Mantieni il fallback deterministico già impostato
+      }
+
+      // Inferisci il tipo basandosi sul nome
+      let inferredType: 'city' | 'beach' | 'mountain' | 'nature' | 'culture' | 'countryside' = 'city';
+      const lowerName = name.toLowerCase();
+      if (lowerName.includes('beach') || lowerName.includes('island') || lowerName.includes('bay')) {
+        inferredType = 'beach';
+      } else if (lowerName.includes('mountain') || lowerName.includes('peak') || lowerName.includes('alps')) {
+        inferredType = 'mountain';
+      } else if (lowerName.includes('park') || lowerName.includes('forest') || lowerName.includes('lake')) {
+        inferredType = 'nature';
+      } else if (lowerName.includes('museum') || lowerName.includes('temple') || lowerName.includes('cathedral')) {
+        inferredType = 'culture';
+      } else if (lowerName.includes('village') || lowerName.includes('countryside') || lowerName.includes('valley')) {
+        inferredType = 'countryside';
+      }
+
+      const destination: Destination = {
+        id: `dynamic-${cityName.toLowerCase().replace(/\s+/g, '-')}`,
+        name: cityName,
+        country: country,
+        continent: 'Unknown', // Potremo mappare questo in futuro se necessario
+        type: inferredType,
+        budget: 'medium' as const,
+        image: imageUrl,
+        images: [imageUrl],
+        // Preferisci la descrizione localizzata (italiano) quando disponibile dall'API city-images
+        description: apiDescription || `Scopri ${cityName} con la sua cultura, attrazioni ed esperienze uniche.`,
+        bestTimeToVisit: ['Tutto l\'anno'],
+        duration: '3-5 giorni',
+        activities: [
+          {
+            id: '1',
+            name: 'Esplorazione',
+            description: 'Scopri i luoghi più interessanti',
+            icon: '🗺️',
+            duration: '2-3 ore'
+          },
+          {
+            id: '2',
+            name: 'Fotografia',
+            description: 'Cattura i momenti più belli',
+            icon: '📸',
+            duration: '1-2 ore'
+          },
+          {
+            id: '3',
+            name: 'Relax',
+            description: 'Goditi l\'atmosfera del luogo',
+            icon: '🧘',
+            duration: 'Libero'
+          }
+        ],
+        coordinates: coordinates
+      };
+
+      // Salva la destinazione creata
+      setDynamicDestinations(prev => ({ ...prev, [name]: destination }));
+      return destination;
+    } catch (error) {
+      console.error('Errore nella creazione destinazione dinamica:', error);
+      return null;
+    }
+  };
+
+  // Gestisce la risoluzione di preferiti sia statici che dinamici
+  const [resolvedFavorites, setResolvedFavorites] = useState<Destination[]>([]);
+  const [isLoadingFavorites, setIsLoadingFavorites] = useState(true);
+
+  useEffect(() => {
+    const resolveFavorites = async () => {
+      setIsLoadingFavorites(true);
+      const resolved: Destination[] = [];
+
+      for (const favorite of state.favorites) {
+        let favoriteId: string;
+        let favoriteName: string;
+
+        // Estrai ID e nome dal preferito
+        if (favorite && typeof favorite === 'object') {
+          favoriteId = (favorite as any).id || (favorite as any).name || String(favorite);
+          favoriteName = (favorite as any).name || (favorite as any).id || String(favorite);
+        } else {
+          favoriteId = String(favorite);
+          favoriteName = String(favorite);
+        }
+
+        // Prima prova a trovare nelle destinazioni dinamiche
+        let destination = null;
+        if (state.destinations && state.destinations.length > 0) {
+          destination = state.destinations.find(d => 
+            d.id === favoriteId || 
+            d.name.toLowerCase() === favoriteId.toLowerCase() ||
+            d.name.toLowerCase() === favoriteName.toLowerCase()
+          );
+        }
+
+        // Se non trovata nelle statiche, prova nelle dinamiche
+        if (!destination && dynamicDestinations[favoriteName]) {
+          destination = dynamicDestinations[favoriteName];
+        }
+
+        // Se ancora non trovata, crea una dinamica
+        if (!destination) {
+          const dynamicDest = await createDynamicDestination(favoriteName);
+          if (dynamicDest) {
+            destination = dynamicDest;
+          }
+        }
+
+        if (destination) {
+          resolved.push(destination);
+        }
+      }
+
+      setResolvedFavorites(resolved);
+      setIsLoadingFavorites(false);
+    };
+
+    resolveFavorites();
+  }, [state.favorites, dynamicDestinations]);
+
+
 
   const itineraryWithDestinations = state.itinerary
     .map((item: ItineraryItem) => {
-      const dest = destinations.find(d => d.id === item.destinationId)
-        || destinations.find(d => d.name.toLowerCase() === String(item.destinationId).toLowerCase())
-        || null;
+      let dest = null;
+      if (state.destinations && state.destinations.length > 0) {
+        dest = state.destinations.find(d => d.id === item.destinationId)
+          || state.destinations.find(d => d.name.toLowerCase() === String(item.destinationId).toLowerCase())
+          || null;
+      }
       return { ...item, destination: dest };
     })
     .filter((item): item is ItineraryItem & { destination: Destination } => item.destination !== null);
@@ -179,7 +361,7 @@ export default function FavoritesPage() {
                 }`}
               >
                 <Heart className="w-5 h-5" />
-                <span>Preferiti ({state.favorites.length})</span>
+                <span>Preferiti ({resolvedFavorites.length})</span>
               </button>
               <button
                 onClick={() => setActiveTab('itinerary')}
@@ -206,11 +388,24 @@ export default function FavoritesPage() {
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.3 }}
             >
-              {favoriteDestinationsResolved.length === 0 && unresolvedEntries.length === 0 ? (
+              {isLoadingFavorites ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl animate-pulse">
+                      <div className="h-48 bg-gray-200 dark:bg-gray-700" />
+                      <div className="p-6">
+                        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
+                        <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : resolvedFavorites.length === 0 ? (
                 <EmptyState type="favorites" />
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {favoriteDestinationsResolved.map((destination: Destination, index: number) => (
+                  {resolvedFavorites.map((destination: Destination, index: number) => (
                     <motion.div
                       key={destination.id}
                       initial={{ opacity: 0, y: 60, rotateY: -15 }}
@@ -227,7 +422,22 @@ export default function FavoritesPage() {
                         transition: { duration: 0.2 }
                       }}
                       className="group cursor-pointer bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-100 dark:border-gray-700"
-                      onClick={() => router.push(`/destinations/${destination.id}`)}
+                      onClick={() => {
+                        // Navigazione dinamica come LiveDestinations
+                        if (destination.id.startsWith('dynamic-')) {
+                          // Per destinazioni dinamiche, usa la pagina live con parametri
+                          const params = new URLSearchParams({ 
+                            name: destination.name, 
+                            lat: String(destination.coordinates?.lat || 0), 
+                            lon: String(destination.coordinates?.lng || 0) 
+                          });
+                          if (destination.image) params.set('image', destination.image);
+                          router.push(`/destinations/live?${params.toString()}`);
+                        } else {
+                          // Per destinazioni statiche, usa la pagina normale
+                          router.push(`/destinations/${destination.id}`);
+                        }
+                      }}
                     >
                       <div className="relative h-48 overflow-hidden">
                         <motion.div
@@ -251,11 +461,7 @@ export default function FavoritesPage() {
                           <Heart className="w-4 h-4 fill-current" />
                         </motion.button>
 
-                        {/* Badge valutazione */}
-                        <div className="absolute top-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1 shadow-lg">
-                          <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                          <span className="text-sm font-semibold text-black dark:text-white">{destination.rating?.toFixed(1) || 'N/A'}</span>
-                        </div>
+
                       </div>
                       
                       <div className="p-6">
@@ -288,93 +494,25 @@ export default function FavoritesPage() {
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                           >
-                            <Link href={`/destinations/${destination.id}`}>
-                              <Button 
-                                size="sm"
-                                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium px-6 py-2 shadow-lg"
-                              >
-                                Dettagli
-                              </Button>
-                            </Link>
-                          </motion.div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                  {unresolvedEntries.map((entry, i) => (
-                    <motion.div
-                      key={`unresolved-${i}-${String(entry.raw)}`}
-                      initial={{ opacity: 0, y: 60, rotateY: -15 }}
-                      animate={{ opacity: 1, y: 0, rotateY: 0 }}
-                      transition={{ 
-                        duration: 0.6, 
-                        delay: (favoriteDestinationsResolved.length + i) * 0.05,
-                        type: "spring",
-                        stiffness: 100
-                      }}
-                      whileHover={{ 
-                        scale: 1.05, 
-                        rotateY: 5,
-                        transition: { duration: 0.2 }
-                      }}
-                      className="group cursor-pointer bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-100 dark:border-gray-700"
-                    >
-                      <div className="relative h-48 overflow-hidden">
-                        <motion.div
-                          className="absolute inset-0 bg-cover bg-center bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-6xl"
-                          style={{ backgroundImage: unresolvedImageFor(entry.raw) ? `url('${unresolvedImageFor(entry.raw)}')` : undefined }}
-                          whileHover={{ scale: 1.1 }}
-                          transition={{ duration: 0.5 }}
-                        >
-                          {!unresolvedImageFor(entry.raw) && <div className="text-gray-500 dark:text-gray-400">📸</div>}
-                        </motion.div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-
-                        {/* Pulsante rimuovi per voci non risolte */}
-                        <motion.button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeFromFavorites(entry.raw);
-                          }}
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.95 }}
-                          className="absolute top-4 right-4 p-2 bg-red-500/90 hover:bg-red-600 text-white rounded-full transition-colors shadow-lg backdrop-blur-sm"
-                        >
-                          <Heart className="w-4 h-4 fill-current" />
-                        </motion.button>
-                      </div>
-
-                      <div className="p-6">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors mb-1">
-                              {String(entry.raw)}
-                            </h3>
-                            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
-                              <MapPin className="w-4 h-4" />
-                              —
-                            </div>
-                          </div>
-                          <div className="text-2xl">🗺️</div>
-                        </div>
-
-                        <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
-                          Informazioni non disponibili per questa destinazione.
-                        </p>
-
-                        <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
-                          <div />
-                          <motion.div
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                          >
                             <Button 
-                              size="sm" 
+                              size="sm"
                               className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium px-6 py-2 shadow-lg"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                // Prova ad andare alla pagina live e passa il nome della città come query in modo che l'utente possa recuperare i dettagli
-                                window.location.href = `/destinations/live?name=${encodeURIComponent(String(entry.raw))}`;
+                                // Navigazione dinamica come LiveDestinations
+                                if (destination.id.startsWith('dynamic-')) {
+                                  // Per destinazioni dinamiche, usa la pagina live con parametri
+                                  const params = new URLSearchParams({ 
+                                    name: destination.name, 
+                                    lat: String(destination.coordinates?.lat || 0), 
+                                    lon: String(destination.coordinates?.lng || 0) 
+                                  });
+                                  if (destination.image) params.set('image', destination.image);
+                                  router.push(`/destinations/live?${params.toString()}`);
+                                } else {
+                                  // Per destinazioni statiche, usa la pagina normale
+                                  router.push(`/destinations/${destination.id}`);
+                                }
                               }}
                             >
                               Scopri di più
@@ -435,10 +573,7 @@ export default function FavoritesPage() {
                                     {new Date(item.endDate).toLocaleDateString('it-IT')}
                                   </span>
                                 </div>
-                                <div className="flex items-center space-x-1">
-                                  <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                                  <span>{item.destination.rating}</span>
-                                </div>
+
                               </div>
                               {item.notes && (
                                 <p className="text-gray-600 dark:text-gray-300 mt-2 text-sm">
@@ -453,11 +588,28 @@ export default function FavoritesPage() {
                               </div>
                               
                               <div className="flex flex-col space-y-2">
-                                <Link href={`/destinations/${item.destination.id}`}>
-                                  <Button size="sm" className="w-full">
-                                    Dettagli
-                                  </Button>
-                                </Link>
+                                <Button 
+                                  size="sm" 
+                                  className="w-full"
+                                  onClick={() => {
+                                    // Navigazione dinamica come LiveDestinations
+                                    if (item.destination.id.startsWith('dynamic-')) {
+                                      // Per destinazioni dinamiche, usa la pagina live con parametri
+                                      const params = new URLSearchParams({ 
+                                        name: item.destination.name, 
+                                        lat: String(item.destination.coordinates?.lat || 0), 
+                                        lon: String(item.destination.coordinates?.lng || 0) 
+                                      });
+                                      if (item.destination.image) params.set('image', item.destination.image);
+                                      router.push(`/destinations/live?${params.toString()}`);
+                                    } else {
+                                      // Per destinazioni statiche, usa la pagina normale
+                                      router.push(`/destinations/${item.destination.id}`);
+                                    }
+                                  }}
+                                >
+                                  Scopri di più
+                                </Button>
                                 <Button
                                   size="sm"
                                   variant="outline"

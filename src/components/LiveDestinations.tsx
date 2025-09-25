@@ -21,7 +21,6 @@ import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MapPin, 
-  Star, 
   Heart, 
   Loader2,
   ChevronLeft,
@@ -72,7 +71,6 @@ type LiveDestination = {
   lat: number;
   lon: number;
   image: string;
-  rating: number;
   budget: 'low' | 'medium' | 'high';
   type: 'city' | 'beach' | 'mountain' | 'countryside' | 'culture' | 'nature';
   description: string;
@@ -279,7 +277,7 @@ const PRIORITY_CITIES_BY_CONTINENT = {
   'Europe': [
     // Top cities per ogni tipo
     'Rome, Italy', 'Paris, France', 'London, UK', 'Barcelona, Spain', 'Amsterdam, Netherlands',
-    'Prague, Czech Republic', 'Vienna, Austria', 'Florence, Italy', 'Venice, Italy', 'Athens, Greece',
+    'Prague, Czech Republic', 'Vienna, Austria', 'Venice, Italy', 'Athens, Greece',
     'Santorini, Greece', 'Nice, France', 'Amalfi, Italy', 'Capri, Italy', 'Malta',
     'Zermatt, Switzerland', 'Chamonix, France', 'Interlaken, Switzerland', 'Innsbruck, Austria',
     'Iceland', 'Norway Fjords', 'Lofoten Islands, Norway', 'Tuscany, Italy', 'Provence, France',
@@ -322,7 +320,7 @@ const PRIORITY_CITIES_BY_CONTINENT = {
 // When the UI requests 'all continents' show a curated list of globally-known major cities with good type distribution
 const MAJOR_GLOBAL_CITIES = [
   // Culture cities
-  'Rome, Italy', 'Florence, Italy', 'Paris, France', 'Athens, Greece', 'Prague, Czech Republic',
+  'Rome, Italy', 'Vienna, Austria', 'Paris, France', 'Athens, Greece', 'Prague, Czech Republic',
   'Kyoto, Japan', 'Beijing, China', 'Istanbul, Turkey', 'Cairo, Egypt', 'Marrakech, Morocco',
   'Cusco, Peru', 'Mexico City, Mexico', 'Washington DC, USA', 'Edinburgh, UK',
   
@@ -362,7 +360,7 @@ const getCityImage = (cityName: string, index: number): string => {
     'Amsterdam': 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=800&h=600&fit=crop',
     'Prague': 'https://images.unsplash.com/photo-1541849546-216549ae216d?w=800&h=600&fit=crop',
     'Vienna': 'https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=800&h=600&fit=crop',
-    'Florence': 'https://images.unsplash.com/photo-1552831388-6a0b3575b32a?w=800&h=600&fit=crop',
+    'Florence': 'https://images.unsplash.com/photo-1691319683356-c8ac7f6647c1?w=800&h=600&fit=crop&auto=format&v=3',
     'Berlin': 'https://images.unsplash.com/photo-1587330979470-3016b6702d89?w=800&h=600&fit=crop',
     'Lisbon': 'https://images.unsplash.com/photo-1588959594747-be64cd73874a?w=800&h=600&fit=crop',
     'Madrid': 'https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=800&h=600&fit=crop',
@@ -654,6 +652,7 @@ export default function LiveDestinations({ searchQuery = '', continent, type, ma
   const [allDestinations, setAllDestinations] = useState<LiveDestination[]>([]); // Tutte le destinazioni caricate
   const [destinations, setDestinations] = useState<LiveDestination[]>([]); // Destinazioni filtrate da mostrare
   const [loading, setLoading] = useState(true);
+  const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false); // Flag per sapere se abbiamo tentato di caricare
   const [error, setError] = useState<string | null>(null);
   
   // Stati per la paginazione
@@ -724,6 +723,10 @@ export default function LiveDestinations({ searchQuery = '', continent, type, ma
       seedParam
     });
     
+    // Crea AbortController per cancellare le richieste se il componente si unmonta o i parametri cambiano
+    const abortController = new AbortController();
+    let isCancelled = false;
+    
     // Precarica immagini per città più popolari per migliorare velocità
     const preloadPopularImages = () => {
       if (typeof window !== 'undefined') {
@@ -737,9 +740,23 @@ export default function LiveDestinations({ searchQuery = '', continent, type, ma
     preloadPopularImages();
 
         const fetchDestinations = async () => {
+      // Controlla se la richiesta è stata cancellata prima di iniziare
+      if (isCancelled || abortController.signal.aborted) {
+        console.log('🚫 Fetch destinazioni cancellato prima dell\'inizio');
+        return;
+      }
       setLoading(true);
       onLoading?.(true);
       setError(null);
+      
+      // Timeout per permettere navigazione rapida dopo 3 secondi
+      const navigationTimeout = setTimeout(() => {
+        if (!isCancelled && !abortController.signal.aborted) {
+          setLoading(false);
+          onLoading?.(false);
+          console.log('⏰ Loading timeout - allowing immediate navigation');
+        }
+      }, 3000);
 
       try {
               // Filtra per continente se specificato (normalizza e supporta alias come "North America")
@@ -908,11 +925,25 @@ export default function LiveDestinations({ searchQuery = '', continent, type, ma
             geocode = cachedGeocode.data;
           } else {
             try {
-              // Richiedi geocoding senza timeout per permettere caricamento progressivo
-              const response = await fetch(`/api/geocode?q=${encodeURIComponent(city)}&limit=1&lang=it`);
+              // Richiedi geocoding con AbortController per permettere cancellazione
+              const response = await fetch(`/api/geocode?q=${encodeURIComponent(city)}&limit=1&lang=it`, {
+                signal: abortController.signal
+              });
+              
+              // Controlla se la richiesta è stata cancellata dopo la risposta
+              if (isCancelled || abortController.signal.aborted) {
+                console.log(`🚫 Geocode cancellato per ${city}`);
+                return null;
+              }
+              
               geocode = await response.json();
               geocodeCache.set(city, { data: geocode, timestamp: Date.now() });
             } catch (err) {
+              // Se l'errore è dovuto alla cancellazione, non logga come errore
+              if (err instanceof Error && err.name === 'AbortError') {
+                console.log(`🚫 Geocode request aborted for ${city}`);
+                return null;
+              }
               logger.warn(`Failed to fetch geocode for ${city}:`, err);
               return null;
             }
@@ -970,8 +1001,16 @@ export default function LiveDestinations({ searchQuery = '', continent, type, ma
             imageUrl = getCityImage(cityName, index);
             
             try {
-              // API immagini senza timeout per caricamento progressivo
-              const imageResponse = await fetch(`/api/city-images?city=${encodeURIComponent(cityName)}`);
+              // API immagini con AbortController per permettere cancellazione
+              const imageResponse = await fetch(`/api/city-images?city=${encodeURIComponent(cityName)}`, {
+                signal: abortController.signal
+              });
+              
+              // Controlla se la richiesta è stata cancellata
+              if (isCancelled || abortController.signal.aborted) {
+                console.log(`🚫 Image fetch cancellato per ${cityName}`);
+                return null;
+              }
               
               if (imageResponse.ok) {
                 const imageData = await imageResponse.json();
@@ -989,6 +1028,11 @@ export default function LiveDestinations({ searchQuery = '', continent, type, ma
                 }
               }
             } catch (imgError) {
+              // Se l'errore è dovuto alla cancellazione, non logga come errore
+              if (imgError instanceof Error && imgError.name === 'AbortError') {
+                console.log(`🚫 Image request aborted for ${cityName}`);
+                return null;
+              }
               logger.warn(`Impossibile ottenere l'immagine per ${cityName}:`, imgError);
             }
             
@@ -1191,8 +1235,6 @@ export default function LiveDestinations({ searchQuery = '', continent, type, ma
             lat: suggestion.lat,
             lon: suggestion.lon,
             image: imageUrl,
-            rating: parseFloat((4.0 + Math.random() * 1.0).toFixed(1)),
-            
             budget: Math.random() > 0.6 ? 'high' : Math.random() > 0.3 ? 'medium' : 'low',
             type: destinationType,
             // Preferisci la descrizione localizzata (italiano) quando disponibile dall'API city-images
@@ -1220,8 +1262,20 @@ export default function LiveDestinations({ searchQuery = '', continent, type, ma
         // Avvia tutte le richieste e processa risultati appena disponibili
         const allPromises = citiesToFetch.map(async (city, index) => {
           try {
+            // Controlla se la richiesta è stata cancellata prima di procedere
+            if (isCancelled || abortController.signal.aborted) {
+              console.log(`🚫 Processing cancellato per ${city}`);
+              return;
+            }
+            
             const destination = await fetchForCity(city, index);
             if (!destination) return;
+
+            // Controlla di nuovo dopo fetchForCity (potrebbe essere stato cancellato nel frattempo)
+            if (isCancelled || abortController.signal.aborted) {
+              console.log(`🚫 Processing cancellato dopo fetch per ${city}`);
+              return;
+            }
 
             // Controllo duplicati in tempo reale
             if (processedIds.has(destination.id)) return;
@@ -1232,6 +1286,12 @@ export default function LiveDestinations({ searchQuery = '', continent, type, ma
             // Controlla prossimità con destinazioni già aggiunte
             let tooClose = false;
             setAllDestinations(currentDestinations => {
+              // Controlla se è stato cancellato prima di aggiornare lo state
+              if (isCancelled || abortController.signal.aborted) {
+                console.log(`🚫 SetAllDestinations cancellato per ${destination.name}`);
+                return currentDestinations;
+              }
+              
               for (const existing of currentDestinations) {
                 if (destination.lat && destination.lon && existing.lat && existing.lon && 
                     isNearby(destination.lat, destination.lon, existing.lat, existing.lon)) {
@@ -1254,32 +1314,56 @@ export default function LiveDestinations({ searchQuery = '', continent, type, ma
 
         // Aspetta che tutte le richieste siano completate per segnalare fine caricamento
         await Promise.allSettled(allPromises);
+        
+        // Marca che abbiamo completato almeno un tentativo di caricamento
+        setHasAttemptedLoad(true);
 
-        // Salva i risultati finali in cache solo se abbiamo destinazioni valide
+        // Salva i risultati finali in cache solo se abbiamo destinazioni valide e non è stato cancellato
         setTimeout(() => {
-          setAllDestinations((currentDestinations) => {
-            if (currentDestinations.length > 0) {
-              const destinationsWithTimestamp = currentDestinations as any;
-              destinationsWithTimestamp.__timestamp = Date.now();
-              destinationsCache.set(cacheKey, destinationsWithTimestamp);
-            }
-            return currentDestinations;
-          });
+          if (!isCancelled && !abortController.signal.aborted) {
+            setAllDestinations((currentDestinations) => {
+              if (currentDestinations.length > 0) {
+                const destinationsWithTimestamp = currentDestinations as any;
+                destinationsWithTimestamp.__timestamp = Date.now();
+                destinationsCache.set(cacheKey, destinationsWithTimestamp);
+              }
+              return currentDestinations;
+            });
+          }
         }, 100);
 
       } catch (err) {
-    setError('Impossibile caricare le destinazioni');
-        logger.error('Error fetching destinations:', err);
+        // Se l'errore è dovuto alla cancellazione, non mostra errore all'utente
+        if (err instanceof Error && err.name === 'AbortError') {
+          console.log('🚫 Fetch destinations aborted');
+        } else {
+          setError('Impossibile caricare le destinazioni');
+          logger.error('Error fetching destinations:', err);
+        }
       } finally {
-        setLoading(false);
-        onLoading?.(false);
+        // Cancella il timeout di navigazione
+        clearTimeout(navigationTimeout);
+        
+        // Solo aggiorna loading se non è stato cancellato
+        if (!isCancelled && !abortController.signal.aborted) {
+          setLoading(false);
+          onLoading?.(false);
+        }
       }
     };
 
   // resetta le destinazioni prima del fetch
     setAllDestinations([]);
     setDestinations([]);
+    setHasAttemptedLoad(false); // Reset del flag quando inizia un nuovo caricamento
     fetchDestinations();
+    
+    // Cleanup function per cancellare le richieste quando il componente si unmonta o i parametri cambiano
+    return () => {
+      console.log('🧹 Cleaning up LiveDestinations - cancelling ongoing requests');
+      isCancelled = true;
+      abortController.abort();
+    };
   }, [searchQuery, seedParam, continent, type]); // Include 'type' per gestire i cambi da/verso "tutti i tipi"
 
   // Filtraggio in tempo reale delle destinazioni caricate quando necessario
@@ -1317,17 +1401,7 @@ export default function LiveDestinations({ searchQuery = '', continent, type, ma
     }
   };
 
-  if (loading) {
-    // Skeleton grid mentre ricarica
-    const skeletonCount = variant === 'hero' ? 3 : 6;
-    return (
-      <div className={`grid ${variant === 'hero' ? 'grid-cols-1 md:grid-cols-3 gap-6' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'} pb-12`}> 
-        {Array.from({ length: skeletonCount }).map((_, i) => (
-          <div key={i} className="animate-pulse bg-gray-100 dark:bg-gray-800 rounded-2xl h-80" />
-        ))}
-      </div>
-    );
-  }
+
 
   if (error) {
     return (
@@ -1341,7 +1415,31 @@ export default function LiveDestinations({ searchQuery = '', continent, type, ma
     );
   }
 
-  if (destinations.length === 0) {
+  // Mostra skeleton se stiamo ancora caricando per la prima volta
+  if (!hasAttemptedLoad && destinations.length === 0) {
+    const skeletonCount = variant === 'hero' ? 3 : 6;
+    return (
+      <div className={`grid ${variant === 'hero' ? 'grid-cols-1 md:grid-cols-3 gap-6' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'} pb-12`}> 
+        {Array.from({ length: skeletonCount }).map((_, i) => (
+          <div key={i} className="animate-pulse bg-gray-100 dark:bg-gray-800 rounded-2xl h-80" />
+        ))}
+      </div>
+    );
+  }
+
+  // Show skeletons if loading, even if we have attempted a load
+  if (loading && destinations.length === 0) {
+    const skeletonCount = variant === 'hero' ? 3 : 6;
+    return (
+      <div className={`grid ${variant === 'hero' ? 'grid-cols-1 md:grid-cols-3 gap-6' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'} pb-12`}> 
+        {Array.from({ length: skeletonCount }).map((_, i) => (
+          <div key={i} className="animate-pulse bg-gray-100 dark:bg-gray-800 rounded-2xl h-80" />
+        ))}
+      </div>
+    );
+  }
+
+  if (destinations.length === 0 && hasAttemptedLoad && !loading) {
     return (
       <div className="text-center py-20">
         <div className="text-6xl mb-4">🔍</div>
@@ -1451,12 +1549,6 @@ export default function LiveDestinations({ searchQuery = '', continent, type, ma
                   }`} 
                 />
               </motion.button>
-
-              {/* Badge valutazione */}
-              <div className="absolute top-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1 shadow-lg">
-                <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                <span className="text-sm font-semibold text-black dark:text-white">{destination.rating?.toFixed(1) || 'N/A'}</span>
-              </div>
 
             </div>
             

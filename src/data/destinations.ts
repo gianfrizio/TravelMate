@@ -15,7 +15,6 @@ export const destinations: Destination[] = [
     ],
     budget: 'high',   
     type: 'beach',
-    rating: 4.8,
     coordinates: { lat: 36.3932, lng: 25.4615 },
     bestTimeToVisit: ['Aprile', 'Maggio', 'Settembre', 'Ottobre'],
     duration: '5-7 giorni',
@@ -58,7 +57,6 @@ export const destinations: Destination[] = [
     ],
     budget: 'high',
     type: 'city',
-    rating: 4.9,
     coordinates: { lat: 35.6762, lng: 139.6503 },
     bestTimeToVisit: ['Marzo', 'Aprile', 'Maggio', 'Ottobre', 'Novembre'],
     duration: '7-10 giorni',
@@ -101,7 +99,6 @@ export const destinations: Destination[] = [
     ],
     budget: 'medium',
     type: 'culture',
-    rating: 4.7,
     coordinates: { lat: -13.1631, lng: -72.5450 },
     bestTimeToVisit: ['Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre'],
     duration: '3-5 giorni',
@@ -145,7 +142,6 @@ export const destinations: Destination[] = [
     ],
     budget: 'high',
     type: 'beach',
-    rating: 4.9,
     coordinates: { lat: 3.2028, lng: 73.2207 },
     bestTimeToVisit: ['Novembre', 'Dicembre', 'Gennaio', 'Febbraio', 'Marzo', 'Aprile'],
     duration: '7-14 giorni',
@@ -182,15 +178,14 @@ export const destinations: Destination[] = [
     country: 'Francia',
     continent: 'Europe',
     description: 'La città dell\'amore, famosa per arte, moda, gastronomia e cultura.',
-    image: 'https://images.unsplash.com/photo-1431274172761-fca41d930114?w=800&h=600&fit=crop',
+    image: 'https://images.unsplash.com/photo-1502602898536-47ad22581b52?w=800&h=600&fit=crop',
     images: [
-      'https://images.unsplash.com/photo-1431274172761-fca41d930114?w=800&h=600&fit=crop',
       'https://images.unsplash.com/photo-1502602898536-47ad22581b52?w=800&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?w=800&h=600&fit=crop'
+      'https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1549144511-f099e773c147?w=800&h=600&fit=crop'
     ],
     budget: 'medium',
     type: 'city',
-    rating: 4.6,
     coordinates: { lat: 48.8566, lng: 2.3522 },
     bestTimeToVisit: ['Aprile', 'Maggio', 'Giugno', 'Settembre', 'Ottobre'],
     duration: '4-7 giorni',
@@ -235,7 +230,6 @@ export const destinations: Destination[] = [
     ],
     budget: 'low',
     type: 'nature',
-    rating: 4.5,
     coordinates: { lat: -8.3405, lng: 115.0920 },
     bestTimeToVisit: ['Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre'],
     duration: '7-14 giorni',
@@ -277,7 +271,6 @@ export const destinations: Destination[] = [
     ],
     budget: 'medium',
     type: 'culture',
-    rating: 4.4,
     coordinates: { lat: 37.9755, lng: 23.7348 },
     bestTimeToVisit: ['Aprile', 'Maggio', 'Settembre', 'Ottobre'],
     duration: '3-5 giorni',
@@ -313,7 +306,6 @@ export const destinations: Destination[] = [
     ],
     budget: 'medium',
     type: 'nature',
-    rating: 4.8,
     coordinates: { lat: -3.4653, lng: -62.2159 },
     bestTimeToVisit: ['Giugno', 'Luglio', 'Agosto', 'Settembre'],
     duration: '5-8 giorni',
@@ -349,7 +341,6 @@ export const destinations: Destination[] = [
     ],
     budget: 'medium',
     type: 'culture',
-    rating: 4.9,
     coordinates: { lat: 30.3285, lng: 35.4444 },
     bestTimeToVisit: ['Marzo', 'Aprile', 'Maggio', 'Ottobre', 'Novembre'],
     duration: '2-4 giorni',
@@ -383,7 +374,6 @@ export const destinations: Destination[] = [
     ],
     budget: 'high',
     type: 'nature',
-    rating: 4.9,
     coordinates: { lat: -2.3333, lng: 34.8333 },
     bestTimeToVisit: ['Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre'],
     duration: '4-7 giorni',
@@ -419,7 +409,6 @@ export const destinations: Destination[] = [
     ],
     budget: 'high',
     type: 'culture',
-    rating: 4.8,
     coordinates: { lat: 35.0116, lng: 135.7681 },
     bestTimeToVisit: ['Marzo', 'Aprile', 'Maggio', 'Ottobre', 'Novembre'],
     duration: '4-6 giorni',
@@ -454,7 +443,6 @@ export const destinations: Destination[] = [
     ],
     budget: 'medium',
     type: 'mountain',
-    rating: 4.7,
     coordinates: { lat: 51.4968, lng: -115.9281 },
     bestTimeToVisit: ['Giugno', 'Luglio', 'Agosto', 'Settembre'],
     duration: '5-8 giorni',
@@ -490,7 +478,6 @@ export const destinations: Destination[] = [
     ],
     budget: 'medium',
     type: 'countryside',
-    rating: 4.6,
     coordinates: { lat: 43.7711, lng: 11.2486 },
     bestTimeToVisit: ['Aprile', 'Maggio', 'Giugno', 'Settembre', 'Ottobre'],
     duration: '5-10 giorni',
@@ -517,6 +504,107 @@ export const destinations: Destination[] = [
         icon: '👨‍🍳',
         duration: '3 ore',
         price: 80
+      }
+    ]
+  },
+  {
+    id: '14',
+    name: 'Roma',
+    country: 'Italia',
+    continent: 'Europe',
+    description: 'La Città Eterna con duemila anni di storia, arte e cultura immortale.',
+    image: 'https://images.unsplash.com/photo-1552832230-c0197040d963?w=800&h=600&fit=crop',
+    images: [
+      'https://images.unsplash.com/photo-1552832230-c0197040d963?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1531572753322-ad063cecc140?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1515542622106-78bda8ba0e5b?w=800&h=600&fit=crop'
+    ],
+    budget: 'medium',
+    type: 'culture',
+    coordinates: { lat: 41.9028, lng: 12.4964 },
+    bestTimeToVisit: ['Aprile', 'Maggio', 'Giugno', 'Settembre', 'Ottobre'],
+    duration: '4-7 giorni',
+    activities: [
+      {
+        id: '14-1',
+        name: 'Colosseo',
+        description: 'Visita l\'anfiteatro più famoso del mondo',
+        icon: '🏛️',
+        duration: '2 ore',
+        price: 16
+      },
+      {
+        id: '14-2',
+        name: 'Musei Vaticani',
+        description: 'Ammira la Cappella Sistina e le opere d\'arte',
+        icon: '🎨',
+        duration: '3 ore',
+        price: 20
+      },
+      {
+        id: '14-3',
+        name: 'Fontana di Trevi',
+        description: 'Lancia una moneta nella fontana più famosa',
+        icon: '⛲',
+        duration: '1 ora'
+      },
+      {
+        id: '14-4',
+        name: 'Foro Romano',
+        description: 'Cammina nel cuore dell\'antica Roma',
+        icon: '🏺',
+        duration: '2 ore',
+        price: 12
+      }
+    ]
+  },
+  {
+    id: '15',
+    name: 'Vienna',
+    country: 'Austria',
+    continent: 'Europe',
+    description: 'Capitale imperiale con palazzi barocchi, caffè storici e tradizione musicale straordinaria.',
+    image: 'https://images.unsplash.com/photo-1516550893923-42d407bd4147?w=800&h=600&fit=crop',
+    images: [
+      'https://images.unsplash.com/photo-1516550893923-42d407bd4147?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1551524164-687a55dd1126?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&h=600&fit=crop'
+    ],
+    budget: 'medium',
+    type: 'culture',
+    coordinates: { lat: 48.2082, lng: 16.3738 },
+    bestTimeToVisit: ['Aprile', 'Maggio', 'Giugno', 'Settembre', 'Ottobre'],
+    duration: '3-5 giorni',
+    activities: [
+      {
+        id: '15-1',
+        name: 'Palazzo di Schönbrunn',
+        description: 'Visita la residenza estiva degli imperatori asburgo',
+        icon: '🏰',
+        duration: '3 ore',
+        price: 22
+      },
+      {
+        id: '15-2',
+        name: 'Centro storico di Vienna',
+        description: 'Passeggia tra architettura barocca e caffè storici',
+        icon: '🏛️',
+        duration: '4 ore'
+      },
+      {
+        id: '15-3',
+        name: 'Concerto di musica classica',
+        description: 'Ascolta Mozart e Strauss nella città della musica',
+        icon: '�',
+        duration: '2 ore',
+        price: 35
+      },
+      {
+        id: '15-4',
+        name: 'Mercatini di Natale',
+        description: 'Visita i famosi mercatini natalizi (dicembre)',
+        icon: '�',
+        duration: '2 ore'
       }
     ]
   }

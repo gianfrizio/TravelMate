@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { motion } from 'framer-motion';
 import { 
   ArrowLeft, 
   Heart, 
-  Star, 
   MapPin, 
   Calendar, 
   Clock,
@@ -20,20 +19,19 @@ import {
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import Button from '@/components/ui/Button';
-import { destinations } from '@/data/destinations';
 import { useApp } from '@/context/AppContext';
 import { useWeather } from '@/hooks/useWeather';
 import { Destination } from '@/types';
 import logger from '@/lib/logger';
 
 interface PageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default function DestinationDetailPage({ params }: PageProps) {
-  const { addToFavorites, removeFromFavorites, isFavorite, addToItinerary } = useApp();
+  const { state, addToFavorites, removeFromFavorites, isFavorite, addToItinerary } = useApp();
   const [destination, setDestination] = useState<Destination | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showItineraryModal, setShowItineraryModal] = useState(false);
@@ -43,14 +41,19 @@ export default function DestinationDetailPage({ params }: PageProps) {
     notes: ''
   });
 
+  // Unwrap params usando React.use()
+  const resolvedParams = use(params);
+
   // Trova la destinazione
   useEffect(() => {
-    const foundDestination = destinations.find(d => d.id === params.id);
-    if (!foundDestination) {
-      notFound();
+    if (state.destinations && state.destinations.length > 0) {
+      const foundDestination = state.destinations.find(d => d.id === resolvedParams.id);
+      if (!foundDestination) {
+        notFound();
+      }
+      setDestination(foundDestination);
     }
-    setDestination(foundDestination);
-  }, [params.id]);
+  }, [resolvedParams.id, state.destinations]);
 
   // Hook per il meteo
   const { weatherData, isLoading: weatherLoading, error: weatherError } = useWeather({
@@ -161,10 +164,7 @@ export default function DestinationDetailPage({ params }: PageProps) {
                     <MapPin className="w-5 h-5" />
                     <span>{destination.country}</span>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                    <span>{destination.rating}</span>
-                  </div>
+
                 </div>
               </div>
             </div>

@@ -10,7 +10,6 @@ export interface Destination {
   budget: 'low' | 'medium' | 'high';
   type: 'beach' | 'mountain' | 'city' | 'countryside' | 'culture' | 'nature';
   activities: Activity[];
-  rating: number;
   coordinates: {
     lat: number;
     lng: number;
@@ -73,4 +72,4 @@ export type FilterType = {
   search: string;
 };
 
-export type SortType = 'name' | 'rating' | 'popularity';
+export type SortType = 'name' | 'popularity';

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, MapPin, Star, Calendar, DollarSign, Shuffle, ArrowRight, Globe } from 'lucide-react';
+import { Sparkles, MapPin, Calendar, DollarSign, Shuffle, ArrowRight, Globe } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useRouter } from 'next/navigation';
 
@@ -171,7 +171,6 @@ export default function SurpriseMe({ defaultCount = 3 }: { defaultCount?: number
           name: city,
           country: country || city,
           type: inferredType,
-          rating: 4.0 + Math.random() * 1.0, // Rating casuale tra 4.0 e 5.0
           activities: [
             {
               id: `${index}-1`,
@@ -399,11 +398,6 @@ export default function SurpriseMe({ defaultCount = 3 }: { defaultCount?: number
                       {/* Overlay gradiente */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                       
-                      {/* Badge rating */}
-                      <div className="absolute top-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1">
-                        <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                        <span className="text-sm font-semibold">{result.rating?.toFixed(1) || 'N/A'}</span>
-                      </div>
 
 
                     </div>

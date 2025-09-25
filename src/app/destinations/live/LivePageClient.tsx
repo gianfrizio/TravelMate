@@ -4,7 +4,6 @@ import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useWeather } from '@/hooks/useWeather';
-import { destinations } from '@/data/destinations';
 import Button from '@/components/ui/Button';
 import { useApp } from '@/context/AppContext';
 import { Heart, ArrowLeft } from 'lucide-react';
@@ -17,7 +16,7 @@ export default function LivePageClient() {
   const lon = params.get('lon') ? Number(params.get('lon')) : undefined;
 
   const { weatherData, isLoading, error } = useWeather({ lat, lng: lon, location: name });
-  const { addToFavorites, removeFromFavorites, isFavorite, getLastSearch } = useApp();
+  const { state, addToFavorites, removeFromFavorites, isFavorite, getLastSearch } = useApp();
   const router = useRouter();
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -31,8 +30,10 @@ export default function LivePageClient() {
         // Se un parametro immagine esplicito è presente nell'URL (dalla lista), preferiscilo.
   useEffect(() => {
   // Prova a trovare i dati della destinazione locale (confronto case-insensitive sul nome)
-    const found = destinations.find(d => d.name.toLowerCase() === (name || '').toLowerCase());
-    if (found) setLocalInfo(found);
+    if (state.destinations && state.destinations.length > 0) {
+      const found = state.destinations.find(d => d.name.toLowerCase() === (name || '').toLowerCase());
+      if (found) setLocalInfo(found);
+    }
 
   // Recupera immagine e descrizione dalla nostra API
     const fetchImage = async () => {
@@ -98,7 +99,7 @@ export default function LivePageClient() {
     };
 
     if (name || (lat && lon)) fetchPlaceDetails();
-  }, [name, lat, lon]);
+  }, [name, lat, lon, state.destinations]);
 
   // Calcola descrizione e src dell'immagine in modo deterministico
   const primaryText = (longExtract && String(longExtract)) || apiDescription || localInfo?.description || '';
@@ -268,7 +269,16 @@ export default function LivePageClient() {
                 {/* azione preferiti */}
                 <Button size="sm" className="px-2 py-1 text-sm flex items-center gap-2" onClick={() => {
                     // Risolvi l'id canonico se abbiamo un dataset locale
-                    const resolvedId = localInfo?.id || (destinations.find(d => d.name.toLowerCase() === (name || '').toLowerCase())?.id) || name;
+                    let resolvedId = localInfo?.id || name;
+                    
+                    // Try to find in destinations only if available
+                    if (!localInfo?.id && state.destinations && state.destinations.length > 0) {
+                      const foundDestination = state.destinations.find(d => d.name.toLowerCase() === (name || '').toLowerCase());
+                      if (foundDestination) {
+                        resolvedId = foundDestination.id;
+                      }
+                    }
+                    
                     if (isFavorite(resolvedId)) {
                       removeFromFavorites(resolvedId);
                     } else {
