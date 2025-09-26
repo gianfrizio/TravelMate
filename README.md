@@ -141,13 +141,11 @@ npm start
 
 ---
 
-Se vuoi, posso aggiungere una sezione automatica che spiega come eseguire Lighthouse CI, come generare il bundle-analyzer, o creare una breve checklist di ottimizzazione per LCP/TBT che puoi seguire prima di ogni deploy.
-
 Buon lavoro! 🚀
  
 ## Screenshot
 
-Qui sotto trovi gli screenshot reali che hai aggiunto alla cartella `public/screenshots/`.
+Qui sotto trovi gli screenshot reali del mio progetto!
 
 Homepage
 ![Homepage](public/screenshots/homepage.png)
@@ -170,18 +168,3 @@ Sezione Servizi
 Sezione Sorprendimi
 ![Sorprendimi](public/screenshots/SezioneSorprendimi.png)
 
-Per sostituire o aggiornare gli screenshot:
-
-1. Cattura gli screenshot desiderati (consigliato 1200×675 o simile widescreen).
-2. Salvali in `public/screenshots/` (es. `homepage.png`, `SezioneDestinazioni.png`, ecc.).
-3. Esegui i comandi:
-
-```bash
-git add public/screenshots/* README.md
-git commit -m "Aggiungi screenshot del sito"
-git push
-```
-
-Se preferisci nomi diversi, aggiorna i percorsi immagine nel README.
-
-### Design System
