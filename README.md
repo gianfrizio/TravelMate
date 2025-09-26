@@ -150,25 +150,25 @@ Buon lavoro! 🚀
 Qui sotto trovi gli screenshot reali che hai aggiunto alla cartella `public/screenshots/`.
 
 Homepage
-![Homepage](/screenshots/homepage.png)
+![Homepage](public/screenshots/homepage.png)
 
 Sezione Destinazioni
-![Destinations](/screenshots/SezioneDestinazioni.png)
+![Destinations](public/screenshots/SezioneDestinazioni.png)
 
 Sezione Preferiti
-![Preferiti](/screenshots/SezionePreferiti.png)
+![Preferiti](public/screenshots/SezionePreferiti.png)
 
 Sezione Blog
-![Blog](/screenshots/SezioneBlog.png)
+![Blog](public/screenshots/SezioneBlog.png)
 
 Sezione Contatti
-![Contatti](/screenshots/SezioneContatti.png)
+![Contatti](public/screenshots/SezioneContatti.png)
 
 Sezione Servizi
-![Servizi](/screenshots/SezioneServizi.png)
+![Servizi](public/screenshots/SezioneServizi.png)
 
 Sezione Sorprendimi
-![Sorprendimi](/screenshots/SezioneSorprendimi.png)
+![Sorprendimi](public/screenshots/SezioneSorprendimi.png)
 
 Per sostituire o aggiornare gli screenshot:
 
