@@ -85,14 +85,28 @@ Note sull'ordine di fallback per le immagini (come implementato in `src/app/api/
 
 ## Struttura principale del progetto
 
-Principali cartelle:
+Cartelle Principali e cosa ci trovi dentro (quick reference):
 
-- `src/app` — pagine e layout (App Router)
-- `src/components` — componenti React riutilizzabili
-- `src/context` — React Context globali
-- `src/hooks` — custom hooks (es. `useWeather`)
-- `src/lib` — utility e helper (es. `logger`)
-- `src/data` — dati mock per development
+- `src/app` — pagine, layout e route (Next.js App Router). Qui trovi le pagine principali sotto cartelle come `destinations/`, `blog/`, `api/` (route handlers server side) e `layout.tsx` / `page.tsx` globali.
+	- Esempi: `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/destinations/[id]/page.tsx`.
+- `src/components` — componenti UI riutilizzabili e piccoli widget (Navbar, Footer, Toast, UI primitives). Metti componenti presentazionali e container qui.
+	- Esempi: `src/components/Navbar.tsx`, `src/components/Toast.tsx`, `src/components/ui/Button.tsx`.
+- `src/context` — provider e context globali (stato dell'app, theme, wishlist). Cerca qui gli helper che persistono su `localStorage`.
+	- Esempio: `src/context/AppContext.tsx`.
+- `src/hooks` — custom hooks riutilizzabili (fetching, theme, weather). Preferisci qui la logica che incapsula side-effects.
+	- Esempi: `src/hooks/useWeather.ts`, `src/hooks/useDestinations.ts`, `src/hooks/useTheme.ts`.
+- `src/lib` — utility generiche e helper condivisi (logger, formattazione, utilità per le API).
+	- Esempi: `src/lib/logger.ts`, `src/lib/utils.ts`.
+- `src/data` — dati statici / mock per development e demo (destinazioni, articoli di blog, mappe di continente).
+	- Esempi: `src/data/destinations.ts`, `src/data/blog.ts`, `src/data/countryToContinent.json`.
+- `src/types` — definizioni TypeScript condivise per modelli e shape dei dati.
+	- Esempio: `src/types/index.ts`.
+- `public` — asset statici serviti direttamente (icone, manifest, screenshot, immagini). Usato anche per immagini che vuoi servire direttamente senza passare da next/image.
+	- Esempi: `public/screenshots/*`, `public/manifest.json`, `public/robots.txt`.
+- `src/app/api` — route API server-side (Next.js route handlers). Qui sono implementati gli endpoint usati dall'app (es. `city-images`, `weather`, `destinations`).
+	- Esempi: `src/app/api/city-images/route.ts`, `src/app/api/weather/route.ts`.
+
+Suggerimento: se cerchi dove modificare una funzionalità specifica (es. come vengono scelte le immagini per una città), cerca `city-images/route.ts` sotto `src/app/api` o utilizza `grep` per trovare il nome della funzione/variabile.
 
 ## Performance & Lighthouse (note pratiche)
 
