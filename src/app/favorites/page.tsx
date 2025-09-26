@@ -142,7 +142,21 @@ export default function FavoritesPage() {
       };
 
       // Prova a ottenere immagine e descrizione dettagliata come in LiveDestinations
+      // Preferisci un'immagine persistita se l'utente ha favorito questa città in passato
       let imageUrl = getCityImage(cityName, 0); // Usa fallback affidabile di default
+      try {
+        const favMapRaw = localStorage.getItem('travelmate-favorite-images');
+        if (favMapRaw) {
+          const favMap = JSON.parse(favMapRaw || '{}');
+          const key = name.toLowerCase();
+          // Try direct match by normalized id/name
+          if (favMap && favMap[key]) {
+            imageUrl = favMap[key];
+          }
+        }
+      } catch (e) {
+        // ignore storage errors
+      }
       let apiDescription: string | null = null;
       
       try {
@@ -151,9 +165,28 @@ export default function FavoritesPage() {
           const imgData = await imgRes.json();
           // Solo usa l'immagine dall'API se sembra affidabile
           if (imgData?.imageUrl && imgData.imageUrl.includes('unsplash.com')) {
-            imageUrl = imgData.imageUrl;
+            // Only overwrite if we don't have a persisted favorite image for this name
+            try {
+              const favMapRaw2 = localStorage.getItem('travelmate-favorite-images');
+              const favMap2 = favMapRaw2 ? JSON.parse(favMapRaw2 || '{}') : {};
+              const key2 = name.toLowerCase();
+              if (!favMap2 || !favMap2[key2]) {
+                imageUrl = imgData.imageUrl;
+              }
+            } catch (e) {
+              imageUrl = imgData.imageUrl;
+            }
           } else if (imgData?.fallbackUrl && imgData.fallbackUrl.includes('unsplash.com')) {
-            imageUrl = imgData.fallbackUrl;
+            try {
+              const favMapRaw3 = localStorage.getItem('travelmate-favorite-images');
+              const favMap3 = favMapRaw3 ? JSON.parse(favMapRaw3 || '{}') : {};
+              const key3 = name.toLowerCase();
+              if (!favMap3 || !favMap3[key3]) {
+                imageUrl = imgData.fallbackUrl;
+              }
+            } catch (e) {
+              imageUrl = imgData.fallbackUrl;
+            }
           }
           // Altrimenti mantieni il fallback deterministico
 
@@ -256,22 +289,50 @@ export default function FavoritesPage() {
           favoriteName = String(favorite);
         }
 
-        // Prima prova a trovare nelle destinazioni dinamiche
-        let destination = null;
-        if (state.destinations && state.destinations.length > 0) {
+        // Try to reuse the same destination object used by the main destinations list.
+        // 1) Check AppContext state.destinations
+        // 2) Check global in-memory cache __GM_DESTINATIONS_CACHE (if present)
+        // 3) Check dynamicDestinations
+        // 4) Fallback to createDynamicDestination
+        let destination: Destination | null = null;
+
+        // 1) AppContext destinations
+        if (!destination && state.destinations && state.destinations.length > 0) {
           destination = state.destinations.find(d => 
             d.id === favoriteId || 
             d.name.toLowerCase() === favoriteId.toLowerCase() ||
             d.name.toLowerCase() === favoriteName.toLowerCase()
-          );
+          ) || null;
         }
 
-        // Se non trovata nelle statiche, prova nelle dinamiche
+        // 2) Global in-memory cache used by LiveDestinations
+        if (!destination && typeof globalThis !== 'undefined') {
+          try {
+            const gmCache: Map<string, any[]> = (globalThis as any).__GM_DESTINATIONS_CACHE;
+            if (gmCache && gmCache instanceof Map) {
+              for (const arr of gmCache.values()) {
+                if (Array.isArray(arr)) {
+                  const found = arr.find((d: any) => {
+                    if (!d) return false;
+                    const nid = String(d.id || '').toLowerCase();
+                    const nname = String(d.name || '').toLowerCase();
+                    return nid === favoriteId.toLowerCase() || nname === favoriteId.toLowerCase() || nname === favoriteName.toLowerCase();
+                  });
+                  if (found) { destination = found as Destination; break; }
+                }
+              }
+            }
+          } catch (e) {
+            // ignore cache errors
+          }
+        }
+
+        // 3) dynamicDestinations
         if (!destination && dynamicDestinations[favoriteName]) {
           destination = dynamicDestinations[favoriteName];
         }
 
-        // Se ancora non trovata, crea una dinamica
+        // 4) create dynamic if still missing
         if (!destination) {
           const dynamicDest = await createDynamicDestination(favoriteName);
           if (dynamicDest) {
@@ -280,6 +341,27 @@ export default function FavoritesPage() {
         }
 
         if (destination) {
+          // Try to prefer persisted image for this favorite, but keep the same object identity when possible
+          try {
+            const favMapRaw = localStorage.getItem('travelmate-favorite-images');
+            if (favMapRaw) {
+              const favMap = JSON.parse(favMapRaw || '{}');
+              const key = (favoriteName || favoriteId || '').toLowerCase();
+              if (favMap && favMap[key]) {
+                // If destination object comes from state or cache, mutate image in-place to preserve identity
+                try {
+                  (destination as any).image = favMap[key];
+                  (destination as any).images = [(favMap[key])];
+                } catch (e) {
+                  // fallback to creating a shallow copy if mutation is restricted
+                  destination = { ...destination, image: favMap[key], images: [favMap[key]] } as Destination;
+                }
+              }
+            }
+          } catch (e) {
+            // ignore storage errors
+          }
+
           resolved.push({
             ...destination,
             originalFavoriteId: favoriteId
@@ -308,6 +390,10 @@ export default function FavoritesPage() {
     })
     .filter((item): item is ItineraryItem & { destination: Destination } => item.destination !== null);
 
+  // Helper per navigazione coerente verso la pagina di dettaglio
+  // Usa lat/lon se presenti (sia come top-level lat/lon che come coordinates.lat/coordinates.lng).
+  
+
   const EmptyState = ({ type }: { type: 'favorites' | 'itinerary' }) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -334,6 +420,33 @@ export default function FavoritesPage() {
       </Link>
     </motion.div>
   );
+  // Helper per navigazione coerente verso la pagina di dettaglio
+  // Usa lat/lon se presenti (sia come top-level lat/lon che come coordinates.lat/coordinates.lng).
+  const navigateToDetails = (destination: Destination) => {
+    try {
+      const lat = (destination as any).lat ?? (destination as any).coordinates?.lat ?? null;
+      const lon = (destination as any).lon ?? (destination as any).coordinates?.lng ?? (destination as any).coordinates?.lon ?? null;
+      const hasCoords = lat !== null && lon !== null && !isNaN(Number(lat)) && !isNaN(Number(lon)) && Number(lat) !== 0 && Number(lon) !== 0;
+
+      if (hasCoords) {
+        const params = new URLSearchParams({ name: destination.name || '', lat: String(lat), lon: String(lon) });
+        if ((destination as any).image) params.set('image', (destination as any).image);
+        router.push(`/destinations/live?${params.toString()}`);
+        return;
+      }
+
+      if (destination.id) {
+        router.push(`/destinations/${destination.id}`);
+        return;
+      }
+
+      // Fallback: cerca per nome
+      router.push(`/destinations?search=${encodeURIComponent(destination.name || '')}`);
+    } catch (e) {
+      console.error('Navigation error for destination:', e);
+      router.push(`/destinations?search=${encodeURIComponent(destination.name || '')}`);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 py-8">
@@ -449,22 +562,7 @@ export default function FavoritesPage() {
                         transition: { duration: 0.2 }
                       }}
                       className="group cursor-pointer bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-100 dark:border-gray-700"
-                      onClick={() => {
-                        // Navigazione dinamica come LiveDestinations
-                        if (destination.id.startsWith('dynamic-')) {
-                          // Per destinazioni dinamiche, usa la pagina live con parametri
-                          const params = new URLSearchParams({ 
-                            name: destination.name, 
-                            lat: String(destination.coordinates?.lat || 0), 
-                            lon: String(destination.coordinates?.lng || 0) 
-                          });
-                          if (destination.image) params.set('image', destination.image);
-                          router.push(`/destinations/live?${params.toString()}`);
-                        } else {
-                          // Per destinazioni statiche, usa la pagina normale
-                          router.push(`/destinations/${destination.id}`);
-                        }
-                      }}
+                      onClick={() => navigateToDetails(destination)}
                     >
                       <div className="relative h-48 overflow-hidden">
                         <motion.div
@@ -524,23 +622,7 @@ export default function FavoritesPage() {
                             <Button 
                               size="sm"
                               className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium px-6 py-2 shadow-lg"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // Navigazione dinamica come LiveDestinations
-                                if (destination.id.startsWith('dynamic-')) {
-                                  // Per destinazioni dinamiche, usa la pagina live con parametri
-                                  const params = new URLSearchParams({ 
-                                    name: destination.name, 
-                                    lat: String(destination.coordinates?.lat || 0), 
-                                    lon: String(destination.coordinates?.lng || 0) 
-                                  });
-                                  if (destination.image) params.set('image', destination.image);
-                                  router.push(`/destinations/live?${params.toString()}`);
-                                } else {
-                                  // Per destinazioni statiche, usa la pagina normale
-                                  router.push(`/destinations/${destination.id}`);
-                                }
-                              }}
+                              onClick={(e) => { e.stopPropagation(); navigateToDetails(destination); }}
                             >
                               Scopri di più
                             </Button>
@@ -618,22 +700,7 @@ export default function FavoritesPage() {
                                 <Button 
                                   size="sm" 
                                   className="w-full"
-                                  onClick={() => {
-                                    // Navigazione dinamica come LiveDestinations
-                                    if (item.destination.id.startsWith('dynamic-')) {
-                                      // Per destinazioni dinamiche, usa la pagina live con parametri
-                                      const params = new URLSearchParams({ 
-                                        name: item.destination.name, 
-                                        lat: String(item.destination.coordinates?.lat || 0), 
-                                        lon: String(item.destination.coordinates?.lng || 0) 
-                                      });
-                                      if (item.destination.image) params.set('image', item.destination.image);
-                                      router.push(`/destinations/live?${params.toString()}`);
-                                    } else {
-                                      // Per destinazioni statiche, usa la pagina normale
-                                      router.push(`/destinations/${item.destination.id}`);
-                                    }
-                                  }}
+                                  onClick={() => navigateToDetails(item.destination)}
                                 >
                                   Scopri di più
                                 </Button>

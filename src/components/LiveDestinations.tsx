@@ -146,12 +146,12 @@ const POPULAR_CITIES = [
   'Douro Valley, Portugal', 'Alentejo, Portugal', 'Andalusia, Spain', 'Galicia, Spain',
   
   // ASIA - Città culture
-  'Kyoto, Japan', 'Nara, Japan', 'Nikko, Japan', 'Kamakura, Japan', 'Hiroshima, Japan',
-  'Beijing, China', 'Xi\'an, China', 'Shanghai, China', 'Guilin, China', 'Lijiang, China',
+  'Kyoto, Japan', 'Nara, Japan', 'Nikko, Japan', 'Kamakura, Japan',
+  'Xi\'an, China', 'Shanghai, China', 'Guilin, China', 'Lijiang, China',
   'Seoul, South Korea', 'Gyeongju, South Korea', 'Busan, South Korea',
   'Bangkok, Thailand', 'Ayutthaya, Thailand', 'Chiang Mai, Thailand', 'Sukhothai, Thailand',
-  'Siem Reap, Cambodia', 'Luang Prabang, Laos', 'Hanoi, Vietnam', 'Hue, Vietnam', 'Hoi An, Vietnam',
-  'Kathmandu, Nepal', 'Bhaktapur, Nepal', 'Lhasa, Tibet', 'Thimphu, Bhutan',
+  'Siem Reap, Cambodia', 'Luang Prabang, Laos', 'Hanoi, Vietnam', 'Hue, Vietnam',
+  'Bhaktapur, Nepal', 'Lhasa, Tibet', 'Thimphu, Bhutan',
   'Varanasi, India', 'Agra, India', 'Jaipur, India', 'Udaipur, India', 'Delhi, India', 'Mumbai, India',
   'Colombo, Sri Lanka', 'Kandy, Sri Lanka', 'Yogyakarta, Indonesia', 'Jakarta, Indonesia',
   'Bagan, Myanmar', 'Mandalay, Myanmar', 'Samarkand, Uzbekistan', 'Bukhara, Uzbekistan',

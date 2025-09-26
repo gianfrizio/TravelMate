@@ -61,7 +61,8 @@ Copiale in `.env.local` (non committare):
 ```env
 GEOAPIFY_API_KEY=your_geoapify_api_key
 OPENWEATHER_API_KEY=your_openweather_api_key
-UNSPLASH_ACCESS_KEY=yor_unsplash_access_key
+UNSPLASH_ACCESS_KEY=your_unsplash_access_key
+PEXELS_API_KEY=your_pexels_access_key
 ```
 
 ## API esterne utilizzate
@@ -78,10 +79,10 @@ Il progetto integra diverse API esterne per geocoding, meteo, immagini e dati di
 
 Note sull'ordine di fallback per le immagini (come implementato in `src/app/api/city-images/route.ts`):
 
-1. Wikipedia summary thumbnail / page media-list (preferito, verifica qualità e filtri su bandiere/loghi)
-2. Unsplash (se `UNSPLASH_ACCESS_KEY` è configurata) con query basate su landmark estratti
-3. Pexels (se `PEXELS_API_KEY` è configurata)
-4. Source statico / Picsum / source.unsplash come fallback
+1. Unsplash (se `UNSPLASH_ACCESS_KEY` è configurata) — provider primario per foto di città e landmark. Le query sono costruite usando estratti/landmark per ottenere immagini pertinenti e di qualità.
+2. Pexels (se `PEXELS_API_KEY` è configurata) — provider secondario quando Unsplash non restituisce immagini soddisfacenti.
+3. Wikipedia summary thumbnail / page media-list — terzo livello di fallback; le immagini vengono filtrate (es. rimozione di bandiere, loghi, immagini di bassa qualità) prima dell'uso.
+4. Source statico / Picsum / source.unsplash — ultima risorsa per placeholder deterministici se le altre sorgenti non sono disponibili o valide.
 
 ## Struttura principale del progetto
 
