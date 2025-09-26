@@ -164,21 +164,26 @@ Qui sotto trovi gli screenshot reali del mio progetto!
 Homepage
 ![Homepage](public/screenshots/homepage.png)
 
+Sezione Sorprendimi
+![Sorprendimi](public/screenshots/SezioneSorprendimi.png)
+
 Sezione Destinazioni
 ![Destinations](public/screenshots/SezioneDestinazioni.png)
 
 Sezione Preferiti
 ![Preferiti](public/screenshots/SezionePreferiti.png)
 
+Sezione Contatti
+![Contatti](public/screenshots/SezioneContatti.png)
+
 Sezione Blog
 ![Blog](public/screenshots/SezioneBlog.png)
 
-Sezione Contatti
-![Contatti](public/screenshots/SezioneContatti.png)
+Sezione Azienda
+![Azienda](public/screenshots/SezioneAzienda.png)
 
 Sezione Servizi
 ![Servizi](public/screenshots/SezioneServizi.png)
 
-Sezione Sorprendimi
-![Sorprendimi](public/screenshots/SezioneSorprendimi.png)
+
 
