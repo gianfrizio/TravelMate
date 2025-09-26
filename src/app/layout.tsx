@@ -83,7 +83,12 @@ export default function RootLayout({
   return (
     <html lang="it" className="dark scroll-smooth" suppressHydrationWarning>
       <head>
-        {/* Risorse per il caricamento anticipato */}
+  {/* Risorse per il caricamento anticipato */}
+  {/* Favicon e PWA manifest - usa /favicon.ico nella cartella public */}
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icon-192x192.png" />
+        <link rel="manifest" href="/manifest.json" />
         <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://source.unsplash.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />

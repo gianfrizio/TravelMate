@@ -1513,8 +1513,10 @@ export default function LiveDestinations({ searchQuery = '', continent, type, ma
                 : 'bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700'
             }`}
             onClick={() => {
-              // Naviga alla pagina di ricerca per la destinazione
-              router.push(`/destinations?search=${encodeURIComponent(destination.name)}`);
+              // Naviga direttamente alla pagina di dettaglio live (mantiene immagine e coordinate)
+              const params = new URLSearchParams({ name: destination.name, lat: String(destination.lat), lon: String(destination.lon) });
+              if (destination.image) params.set('image', destination.image);
+              router.push(`/destinations/live?${params.toString()}`);
             }}
           >
             <div className="relative h-64 overflow-hidden">
