@@ -62,7 +62,6 @@ Copiale in `.env.local` (non committare):
 GEOAPIFY_API_KEY=your_geoapify_api_key
 OPENWEATHER_API_KEY=your_openweather_api_key
 UNSPLASH_ACCESS_KEY=yor_unsplash_access_key
-NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 ## API esterne utilizzate
@@ -83,9 +82,6 @@ Note sull'ordine di fallback per le immagini (come implementato in `src/app/api/
 2. Unsplash (se `UNSPLASH_ACCESS_KEY` è configurata) con query basate su landmark estratti
 3. Pexels (se `PEXELS_API_KEY` è configurata)
 4. Source statico / Picsum / source.unsplash come fallback
-
-Se vuoi, posso aggiungere snippet di esempio per ottenere le chiavi API (link ufficiali) o uno script che verifica la presenza delle variabili d'ambiente in `npm run preflight`.
-
 
 ## Struttura principale del progetto
 
@@ -148,4 +144,44 @@ npm start
 Se vuoi, posso aggiungere una sezione automatica che spiega come eseguire Lighthouse CI, come generare il bundle-analyzer, o creare una breve checklist di ottimizzazione per LCP/TBT che puoi seguire prima di ogni deploy.
 
 Buon lavoro! 🚀
+ 
+## Screenshot
+
+Qui sotto trovi gli screenshot reali che hai aggiunto alla cartella `public/screenshots/`.
+
+Homepage
+![Homepage](/screenshots/homepage.png)
+
+Sezione Destinazioni
+![Destinations](/screenshots/SezioneDestinazioni.png)
+
+Sezione Preferiti
+![Preferiti](/screenshots/SezionePreferiti.png)
+
+Sezione Blog
+![Blog](/screenshots/SezioneBlog.png)
+
+Sezione Contatti
+![Contatti](/screenshots/SezioneContatti.png)
+
+Sezione Servizi
+![Servizi](/screenshots/SezioneServizi.png)
+
+Sezione Sorprendimi
+![Sorprendimi](/screenshots/SezioneSorprendimi.png)
+
+Per sostituire o aggiornare gli screenshot:
+
+1. Cattura gli screenshot desiderati (consigliato 1200×675 o simile widescreen).
+2. Salvali in `public/screenshots/` (es. `homepage.png`, `SezioneDestinazioni.png`, ecc.).
+3. Esegui i comandi:
+
+```bash
+git add public/screenshots/* README.md
+git commit -m "Aggiungi screenshot del sito"
+git push
+```
+
+Se preferisci nomi diversi, aggiorna i percorsi immagine nel README.
+
 ### Design System

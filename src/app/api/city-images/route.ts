@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { destinations } from '@/data/destinations';
 
 export async function GET(request: NextRequest) {
   const cityName = request.nextUrl.searchParams.get('city');
@@ -184,16 +185,67 @@ export async function GET(request: NextRequest) {
   // Verifica che la pagina Wikipedia trovata sia effettivamente un luogo (city/town). Se no, scarta la descrizione wiki per evitare contenuti non correlati
     try {
       const wikiHost = usedLang === 'it' ? 'it.wikipedia.org' : 'en.wikipedia.org';
-  // isWikipediaPagePlace è definita più avanti in questo file
-  // Se la pagina non rappresenta un luogo, cancella searchData/longExtract per evitare descrizioni non correlate
-  // Nota: intenzionalmente silenziamo gli errori qui e continuiamo con la selezione immagine di fallback
-  // che poi si baserà maggiormente su cityName e sui landmark estratti.
+      // isWikipediaPagePlace è definita più avanti in questo file
+      // Se la pagina non rappresenta un luogo, proviamo a trovare una pagina "parent" più generica
+      // (es: 'Comuna 6' -> cerca la città/metropoli correlata) usando la ricerca di Wikipedia.
+      // Questo aiuta casi come 'comuna 6' che altrimenti restituiscono immagini non rappresentative.
       // eslint-disable-next-line no-await-in-loop
       const pageIsPlace = await isWikipediaPagePlace(pageTitle, wikiHost);
       if (!pageIsPlace) {
-        console.debug('[city-images] wikipedia page is not a place, ignoring wiki extract for', pageTitle);
-        searchData = null;
-        longExtract = null;
+        console.debug('[city-images] wikipedia page is not a place, trying to find parent place for', pageTitle);
+        try {
+          // Cerca una pagina 'parent' usando la API di ricerca di Wikipedia e verifica con isWikipediaPagePlace
+          async function findParentPlace(name: string, host: string) {
+            try {
+              const searchHost = host;
+              const placeHints = ['città', 'comune', 'city', 'town', 'municipio', 'municipality', 'capoluogo'];
+              const sr = `${name} ${placeHints.join(' ')}`;
+              const searchApi = `https://${searchHost}/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(sr)}&origin=*`;
+              const resp = await fetch(searchApi);
+              if (!resp.ok) return null;
+              const data = await resp.json();
+              const results = data?.query?.search || [];
+              for (const r of results) {
+                const title = r?.title;
+                if (!title) continue;
+                try {
+                  const isPlaceCandidate = await isWikipediaPagePlace(title, searchHost);
+                  if (isPlaceCandidate) return title;
+                } catch (e) {
+                  // ignora singoli fallimenti
+                }
+              }
+              // fallback: ritorna il primo risultato non vuoto
+              return results[0]?.title || null;
+            } catch (e) {
+              return null;
+            }
+          }
+
+          const parent = await findParentPlace(pageTitle || cityName, usedLang === 'it' ? 'it.wikipedia.org' : 'en.wikipedia.org');
+          if (parent) {
+            const parentResp = await fetch(`https://${usedLang === 'it' ? 'it.wikipedia.org' : 'en.wikipedia.org'}/api/rest_v1/page/summary/${encodeURIComponent(parent)}`);
+            if (parentResp.ok) {
+              searchResponse = parentResp;
+              searchData = await searchResponse.json();
+              // aggiorna pageTitleRaw per continuare le heuristics con il titolo più coerente
+              pageTitleRaw = searchData?.title || pageTitleRaw;
+            } else {
+              // non abbiamo trovato un parent valido, scarta i dati wiki
+              console.debug('[city-images] no parent place found, ignoring wiki extract for', pageTitle);
+              searchData = null;
+              longExtract = null;
+            }
+          } else {
+            console.debug('[city-images] parent place search returned nothing for', pageTitle);
+            searchData = null;
+            longExtract = null;
+          }
+        } catch (e) {
+          // se qualcosa va storto, scarta i dati wiki e continua
+          searchData = null;
+          longExtract = null;
+        }
       }
     } catch (e) {
       // ignora e continua
@@ -279,7 +331,7 @@ export async function GET(request: NextRequest) {
         let best: any = null;
         let bestScore = -Infinity;
 
-        for (const photo of results) {
+  for (const photo of results) {
           let score = 0;
           const alt = String(photo?.alt_description || '').toLowerCase();
           const desc = String(photo?.description || '').toLowerCase();
@@ -313,6 +365,10 @@ export async function GET(request: NextRequest) {
             'shoes', 'shoe', 'sneakers', 'boots', 'clothing', 'clothes', 'fashion', 'outfit',
             'scarpe', 'scarpa', 'sneaker', 'stivali', 'abbigliamento', 'vestiti', 'moda'
           ];
+          // Evita immagini di stadi, arene e eventi sportivi che spesso non rappresentano la città
+          const sportsBlacklist = [
+            'stadium', 'stadione', 'arena', 'stadiums', 'stadion', 'soccer', 'football', 'futbol', 'match', 'game', 'goal', 'kickoff', 'sports', 'crowd'
+          ];
           
           // Blacklist specifica per città che vengono spesso confuse
           const citySpecificBlacklist: {[key: string]: string[]} = {
@@ -341,6 +397,15 @@ export async function GET(request: NextRequest) {
               if (alt.includes(b) || desc.includes(b) || loc.includes(b) || tags.some((t: string) => t.includes(b))) {
                 isBlacklisted = true;
                 break;
+              }
+            }
+            // Blacklist per immagini sportive/stadio
+            if (!isBlacklisted) {
+              for (const sb of sportsBlacklist) {
+                if (alt.includes(sb) || desc.includes(sb) || loc.includes(sb) || tags.some((t: string) => t.includes(sb))) {
+                  isBlacklisted = true;
+                  break;
+                }
               }
             }
             
@@ -409,11 +474,20 @@ export async function GET(request: NextRequest) {
             if (tags.some((t: string) => t.includes(pattern))) score -= 25;
           }
 
+          // Penalizza fortemente immagini che sembrano riferirsi a stadi o eventi sportivi
+          const stadiumPatterns = ['stadium', 'stadione', 'arena', 'match', 'soccer', 'football', 'futbol', 'stadiums', 'footballmatch'];
+          for (const sp of stadiumPatterns) {
+            if (alt.includes(sp) || desc.includes(sp) || loc.includes(sp) || tags.some((t: string) => t.includes(sp))) score -= 200;
+          }
+
           // piccolo incremento per maggior numero di like/popolarità
           score += (photo?.likes || 0) * 0.01;
 
           const cand = photo?.urls?.regular || photo?.urls?.full || photo?.urls?.raw;
           if (!cand) continue;
+
+          // skip candidate if already used elsewhere
+          if (isAlreadyUsed(cand)) continue;
 
           // Penalizza placeholder evidenti da estensione del file o pattern di percorso noti
           const lc = String(cand).toLowerCase();
@@ -429,14 +503,16 @@ export async function GET(request: NextRequest) {
           const content = (longExtract || searchData?.extract || '')?.toLowerCase() || '';
           const activities = generateActivitiesFromText(content);
           console.debug('[city-images] selected unsplash photo', { city: pageTitle, cand: best.cand, score: best.score, alt: best.photo?.alt_description, location: best.photo?.location?.title });
+          // mark the returned image as used to avoid duplicates across requests
+          markUsed(best.cand);
           return NextResponse.json({
             imageUrl: best.cand,
             // preferisci la descrizione alt della foto ma fai fallback al titolo wiki localizzato
             title: best.photo?.alt_description || (usedLang === 'it' ? searchData?.title : searchData?.title) || pageTitle,
-            description: searchData?.extract || null,
+                    description: chooseDescription(searchData?.extract, cityName as string),
             longExtract,
             activities,
-            source: 'unsplash',
+              source: 'unsplash',
             lang: usedLang
           });
         }
@@ -463,7 +539,7 @@ export async function GET(request: NextRequest) {
         // ignora e consenti la thumbnail
       }
 
-      if (acceptThumb) {
+  if (acceptThumb) {
   // Ottieni la versione ad alta risoluzione modificando l'URL
         const imageUrl = searchData.thumbnail.source.replace(/\/\d+px-/, '/800px-');
 
@@ -479,15 +555,21 @@ export async function GET(request: NextRequest) {
             const activities = generateActivitiesFromText(content);
 
             console.debug('[city-images] returning wikipedia thumbnail', { title: searchData.title, imageUrl });
-            return NextResponse.json({
-              imageUrl,
+            // avoid duplicates
+            if (isAlreadyUsed(imageUrl)) {
+              // if already used, don't return it; fallthrough to media-list
+            } else {
+              markUsed(imageUrl);
+              return NextResponse.json({
+                imageUrl,
               title: searchData.title,
-              description: searchData.extract,
+              description: chooseDescription(searchData.extract, cityName as string),
               longExtract,
               activities,
               source: 'wikipedia',
               lang: usedLang
-            });
+              });
+            }
           }
           } catch (err) {
           // se HEAD fallisce, non accettare la thumbnail (passa al media-list)
@@ -611,15 +693,20 @@ export async function GET(request: NextRequest) {
         const content = (longExtract || searchData.extract || '').toLowerCase();
         const activities = generateActivitiesFromText(content);
         console.debug('[city-images] returning wikipedia media-list image', { title: searchData.title, imageUrl: chosenUrl });
-        return NextResponse.json({
-          imageUrl: chosenUrl,
+        if (isAlreadyUsed(chosenUrl)) {
+          // if already used, pretend not found and allow fallbacks
+        } else {
+          markUsed(chosenUrl);
+          return NextResponse.json({
+            imageUrl: chosenUrl,
           title: searchData.title,
-          description: searchData.extract,
+          description: chooseDescription(searchData.extract, cityName as string),
           longExtract,
           activities,
           source: 'wikipedia',
           lang: usedLang
-        });
+          });
+        }
       }
     }
 
@@ -646,16 +733,22 @@ export async function GET(request: NextRequest) {
               const ct = String(head.headers.get('content-type') || '').toLowerCase();
               const cl = Number(head.headers.get('content-length') || '0');
                 if (ct.startsWith('image/') && !ct.includes('svg') && (!cl || cl > 2000)) {
-                console.debug('[city-images] returning pexels image', { city: pageTitle || cityName, imageUrl: cand });
-                return NextResponse.json({
+                // skip if already used
+                if (isAlreadyUsed(cand)) {
+                  // continue to final fallback
+                } else {
+                  markUsed(cand);
+                  console.debug('[city-images] returning pexels image', { city: pageTitle || cityName, imageUrl: cand });
+                  return NextResponse.json({
       imageUrl: cand,
       title: photo?.alt || searchData?.title || pageTitle || cityName,
-      description: searchData?.extract || null,
+  description: chooseDescription(searchData?.extract, cityName as string),
       longExtract,
       activities,
       source: 'pexels',
       lang: usedLang
     });
+                }
               }
             } catch (err) {
               // se la richiesta HEAD fallisce, ignora e continua verso il fallback finale
@@ -686,6 +779,35 @@ export async function GET(request: NextRequest) {
       source: 'fallback'
     });
   }
+}
+
+// --- Image deduplication helpers ---
+function normalizeUrl(u: any) {
+  if (!u) return '';
+  try {
+    const s = String(u).split('?')[0].replace(/\/+$/, '').toLowerCase();
+    return s;
+  } catch (e) {
+    return String(u || '').toLowerCase();
+  }
+}
+
+const usedImages = new Set<string>(
+  // seed used images from the static destinations dataset to avoid reusing those URLs
+  (Array.isArray(destinations) ? destinations.flatMap(d => [d.image, ...(d.images || [])]) : [])
+    .filter(Boolean)
+    .map(normalizeUrl)
+    .filter(Boolean)
+);
+
+function isAlreadyUsed(url: string | null | undefined) {
+  const n = normalizeUrl(url);
+  return n ? usedImages.has(n) : false;
+}
+
+function markUsed(url: string | null | undefined) {
+  const n = normalizeUrl(url);
+  if (n) usedImages.add(n);
 }
 
 function generateActivitiesFromText(content: string) {
@@ -726,6 +848,31 @@ function generateActivitiesFromText(content: string) {
   }
 
   return acts.slice(0, 6);
+}
+
+// Heuristics for description fallback
+function isGenericDescription(text: string | null | undefined) {
+  if (!text) return true;
+  const s = String(text).trim().toLowerCase();
+  if (!s) return true;
+  // Patterns that indicate overly generic or unhelpful descriptions
+  const genericPatterns = [/^view\b/, /^vista\b/, /^panorama\b/, /^picture of\b/, /^photo of\b/, /^image of\b/, /^veduta\b/];
+  for (const p of genericPatterns) if (p.test(s)) return true;
+  // too short or too few words
+  const words = s.split(/\s+/).filter(Boolean);
+  if (words.length < 8) return true;
+  return false;
+}
+
+function chooseDescription(maybe: string | null | undefined, cityName: string) {
+  try {
+    if (!maybe || isGenericDescription(maybe)) {
+      return `Scopri ${cityName} con la sua cultura, attrazioni ed esperienze uniche.`;
+    }
+    return maybe;
+  } catch (e) {
+    return `Scopri ${cityName} con la sua cultura, attrazioni ed esperienze uniche.`;
+  }
 }
 
 // stima dei prezzi rimossa - i prezzi non sono più forniti dall'API
